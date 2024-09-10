@@ -24,6 +24,8 @@ logcmd = tf.command_t(name = "log-mode", params = [2])  # Set all muscles to fas
 output_path = "C:/Users/School/Desktop/obsidian/ThermoFlex/python-serial/test/Log folder/test1.txt"
 
 node0.filepath = output_path
+#node0.logstate["filelog"]=True #sets the logpath and logging to true
+#node0.logstate["dictlog"]=True #sets the logpath and logging to true
 node0.logstate["printlog"]=True #sets the logpath and logging to true
 
 
