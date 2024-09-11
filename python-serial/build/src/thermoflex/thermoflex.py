@@ -53,7 +53,7 @@ def send_command_str(node:object, command): #construct string then send
     '''
     command_str = None
     port = node.arduino
-    if command.code == 0xFF or 0x04:
+    if command.code == 0xFF or command.code == 0x04:
         command_str = f"{command.name} {command.device} \n"
         
         port.write(command_str.encode('utf-8'))
@@ -62,10 +62,10 @@ def send_command_str(node:object, command): #construct string then send
         command_str = f"{command.name} {command.device} "
         
         for p in command.params:
-            command_str = command_str + str(p).lower # Current string implementation
+            command_str = command_str + str(p).lower() # Current string implementation
              
-        
-        port.write(command_str + "\n".encode('utf-8'))       
+        port.write(f"{command_str} \n".encode('utf-8'))       
+    
     t.sleep(0.05)
 
 def send_command(node:object, command):
@@ -76,23 +76,21 @@ def send_command(node:object, command):
     '''
     
     port = node.arduino
+    command_list = None
+    command_params = None
     
-    if command.code == 0xFF or 0x04:
-        port.write(command.code.encode('ascii')) #TODO: check if send
-        t.sleep(0.01)
+    if command.code == 0xFF or command.code == 0x04:
+        command_list = bytearray([command.code, command.devcode])
         
-        port.write(command.devcode.encode('ascii'))
-        t.sleep(0.01)
-        
+        command_final = command_list
     else:    
-        port.write(command.code.encode('ascii'))
-        t.sleep(0.01)
+        command_list = bytearray([command.code, command.devcode])
         
-        port.write(command.devcode.encode('ascii'))
-        t.sleep(0.01)
         for p in command.params:
-            port.write(p.encode('ascii'))  # Current string implementation
-            t.sleep(0.01)
+            command_params = command_params + bytearray(p)  # Current string implementation
+        
+        command_final = command_list + command_params
+    port.write(command_final.encode('ascii'))
     t.sleep(0.05)      
 
 def discover(proid = prod):  # Add to node list here
@@ -207,9 +205,9 @@ class command_t:
         if self.isValid(command = self.name, params = self.params) is True:
             pass
         elif self.isValid(command = self.name, params = self.params) is False:
-           raise ValueError()
            print("Incorrect arguments for this command")
-            
+           raise ValueError() 
+           
 #---------------------------------------------------------------------------------------
 
 class node:
@@ -220,7 +218,7 @@ class node:
         self.prodid = prodid
         self.port0 = port0
         self.logmode = logmode
-        self.logdict = {}
+        self.logdict = {"node":[[],[],[],[]],"M1":[[],[],[],[],[],[],[],[],[],[],[],[]],"M2":[[],[],[],[],[],[],[],[],[],[],[],[]]}
         self.mosports = mosports
         self.muscles = {}
         self.command_buff = []
@@ -563,7 +561,7 @@ class muscle:
          
 #----------------------------------------------------------------------------------------------------
 
-
+#Thread the update and delay functions?
 def update(): #choose which node to update and the delay
     '''
     
@@ -578,8 +576,7 @@ def delay(time):
     
     timer(time)
     while timeleft>0:
-        for node in nodel:
-            node.update()
+        update()
         
 
 def endAll():
@@ -592,6 +589,7 @@ def endAll():
     for node in nodel:
         node.closePort()
 
+@threaded
 def logTo(node:object, logdata ,filepath:str=filepath):
     '''
     
@@ -608,34 +606,30 @@ def logTo(node:object, logdata ,filepath:str=filepath):
             pass #passes statement upon being empty
 
         else:   
-            if node.logstate['dictlog'] == True: #checks log data 
-                try:
+            try: #fix data splitting and parsing
                     splitbuff = logdata.split(' ')
                     splitnode = splitbuff[:splitbuff.index('M1')]
                     splitm1 = splitbuff[splitbuff.index('M1') + 1:splitbuff.index('M2')]
                     splitm2 = splitbuff[splitbuff.index('M2') + 2:]
-                except IndexError:
+            except IndexError:
                     pass
+            
+            if node.logstate['dictlog'] == True: #checks log data 
                 
                 for x in range(0,len(splitnode)):
-                    node.logdict["node"][x].append(splitnode)
+                    node.logdict["node"][x].append(splitnode[x])
                 
                 for x in range(0,len(splitm1)):
-                    node.logdict["M1"][x].append(splitm1)
+                    node.logdict["M1"][x].append(splitm1[x])
                 
                 for x in range(0,len(splitm2)):
-                    node.logdict["M2"][x].append(splitm2)
+                    node.logdict["M2"][x].append(splitm2[x])
             
             if node.logstate['printlog'] == True:
                 print(str(logdata))
             
             if node.logstate['filelog'] == True:
-                
-                with open(filepath,'w') as file:
-                    file.write(str(node.idnum) +' '+ str(logdata)+ '\n')
-                
-           
-    
+                pass #pandas write to .csv
     finally:
         pass
 

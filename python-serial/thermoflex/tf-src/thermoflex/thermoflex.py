@@ -218,7 +218,7 @@ class node:
         self.prodid = prodid
         self.port0 = port0
         self.logmode = logmode
-        self.logdict = {}
+        self.logdict = {"node":[[],[],[],[]],"M1":[[],[],[],[],[],[],[],[],[],[],[],[]],"M2":[[],[],[],[],[],[],[],[],[],[],[],[]]}
         self.mosports = mosports
         self.muscles = {}
         self.command_buff = []
@@ -617,13 +617,13 @@ def logTo(node:object, logdata ,filepath:str=filepath):
             if node.logstate['dictlog'] == True: #checks log data 
                 
                 for x in range(0,len(splitnode)):
-                    node.logdict["node"][x].append(splitnode)
+                    node.logdict["node"][x].append(splitnode[x])
                 
                 for x in range(0,len(splitm1)):
-                    node.logdict["M1"][x].append(splitm1)
+                    node.logdict["M1"][x].append(splitm1[x])
                 
                 for x in range(0,len(splitm2)):
-                    node.logdict["M2"][x].append(splitm2)
+                    node.logdict["M2"][x].append(splitm2[x])
             
             if node.logstate['printlog'] == True:
                 print(str(logdata))
