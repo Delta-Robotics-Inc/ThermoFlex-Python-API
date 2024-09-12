@@ -25,8 +25,8 @@ output_path = "C:/Users/School/Desktop/obsidian/ThermoFlex/python-serial/test/Lo
 
 node0.filepath = output_path
 #node0.logstate["filelog"]=True #sets the logpath and logging to true
-#node0.logstate["dictlog"]=True #sets the logpath and logging to true
-node0.logstate["printlog"]=True #sets the logpath and logging to true
+node0.logstate["dictlog"]=True #sets the logpath and logging to true
+#node0.logstate["printlog"]=True #sets the logpath and logging to true
 
 
 m_to_train = muscle1  # Just set to the muscle port that should be trained
@@ -50,7 +50,9 @@ tf.delay(wait2) # Continue collecting data until the end of program
 node0.sendLogmode(0)
 tf.update()
 tf.endAll() # Closes node devices (serial.close())
-
+print(node0.nodedict)
+print(node0.m1dict)
+print(node0.m2dict)
 
 # This is a new feature, but it would create a plot like I created in my niti-train-program.py based on the data stored to this text file.  You can parse it to create the sensor data arrays and then plot using the exact same method I used in my script
 #tf.plotting(output_path)

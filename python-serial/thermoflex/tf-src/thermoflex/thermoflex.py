@@ -218,7 +218,9 @@ class node:
         self.prodid = prodid
         self.port0 = port0
         self.logmode = logmode
-        self.logdict = {"node":[[],[],[],[]],"M1":[[],[],[],[],[],[],[],[],[],[],[],[]],"M2":[[],[],[],[],[],[],[],[],[],[],[],[]]}
+        self.nodedict = {"A":[],"B":[],"C":[],"D":[]}
+        self.m1dict = {"A":[],"B":[],"C":[],"D":[],"E":[],"F":[],"G":[],"H":[],"I":[],"J":[],"K":[],"L":[]}
+        self.m2dict = {"A":[],"B":[],"C":[],"D":[],"E":[],"F":[],"G":[],"H":[],"I":[],"J":[],"K":[],"L":[]}
         self.mosports = mosports
         self.muscles = {}
         self.command_buff = []
@@ -610,26 +612,30 @@ def logTo(node:object, logdata ,filepath:str=filepath):
                     splitbuff = logdata.split(' ')
                     splitnode = splitbuff[:splitbuff.index('M1')]
                     splitm1 = splitbuff[splitbuff.index('M1') + 1:splitbuff.index('M2')]
-                    splitm2 = splitbuff[splitbuff.index('M2') + 2:]
-            except IndexError:
+                    splitm2 = splitbuff[splitbuff.index('M2') + 1:]
+            except ValueError:
                     pass
             
             if node.logstate['dictlog'] == True: #checks log data 
                 
-                for x in range(0,len(splitnode)):
-                    node.logdict["node"][x].append(splitnode[x])
+                nodelist = list(node.nodedict.keys())
+                m1list = list(node.m1dict.keys())
+                m2list = list(node.m2dict.keys())
                 
-                for x in range(0,len(splitm1)):
-                    node.logdict["M1"][x].append(splitm1[x])
-                
-                for x in range(0,len(splitm2)):
-                    node.logdict["M2"][x].append(splitm2[x])
+                for x in nodelist:
+                    node.nodedict[x].append(splitnode[nodelist.index(x)])
+
+                for x in m1list:
+                    node.m1dict[x].append(splitm1[m1list.index(x)])
+
+                for x in m2list:
+                    node.m2dict[x].append(splitm2[m2list.index(x)])
             
             if node.logstate['printlog'] == True:
                 print(str(logdata))
             
             if node.logstate['filelog'] == True:
-                pass #pandas write to .csv
+                pass #pandas write to .csv/ dictlog append to .csv
     finally:
         pass
 
