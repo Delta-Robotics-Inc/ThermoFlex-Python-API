@@ -1,4 +1,4 @@
-from thermoflex import thermoflex as tf
+import thermoflex as tf
 
 
 
@@ -16,8 +16,7 @@ node0.setMuscle(1, muscle2)
 
 node0.status()
 
-node0.logmode = 2
-logcmd = tf.command_t(name = "log-mode", params = [2])  # Set all muscles to fast logmode
+
 
 
 # Set output path and mode (Like Binary vs UTF-8)
@@ -41,7 +40,7 @@ wait1 = 50
 wait2 = 10
 
 # Test Control Script
-node0.sendLogmode(2)
+node0.setLogmode(2)  # Set the node to fast logmode
 m_to_train.setEnable(True)
 tf.update()
 tf.delay(wait1)  # Internally calls tf.update() until a timer has surpassed 1.0 second
