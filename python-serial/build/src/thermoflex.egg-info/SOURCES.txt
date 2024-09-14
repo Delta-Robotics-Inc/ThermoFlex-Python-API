@@ -2,7 +2,8 @@ LICENSE.txt
 README_QUICK.MD
 pyproject.toml
 src/thermoflex/__init__.py
-src/thermoflex/thermoflex.py
+src/thermoflex/commands.py
+src/thermoflex/controls.py
 src/thermoflex.egg-info/PKG-INFO
 src/thermoflex.egg-info/SOURCES.txt
 src/thermoflex.egg-info/dependency_links.txt

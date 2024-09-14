@@ -1,4 +1,4 @@
-from thermoflex import thermoflex as tf
+import thermoflex as tf
 
 
 
@@ -16,8 +16,7 @@ node0.setMuscle(1, muscle2)
 
 node0.status()
 
-node0.logmode = 2
-logcmd = tf.command_t(name = "log-mode", params = [2])  # Set all muscles to fast logmode
+
 
 
 # Set output path and mode (Like Binary vs UTF-8)
@@ -25,8 +24,8 @@ output_path = "C:/Users/School/Desktop/obsidian/ThermoFlex/python-serial/test/Lo
 
 node0.filepath = output_path
 #node0.logstate["filelog"]=True #sets the logpath and logging to true
-#node0.logstate["dictlog"]=True #sets the logpath and logging to true
-node0.logstate["printlog"]=True #sets the logpath and logging to true
+node0.logstate["dictlog"]=True #sets the logpath and logging to true
+#node0.logstate["printlog"]=True #sets the logpath and logging to true
 
 
 m_to_train = muscle1  # Just set to the muscle port that should be trained
@@ -37,17 +36,17 @@ m_to_train.setMode("percent")  # Train mode does not work yet.  This is the best
 m_to_train.setSetpoint(0.1)  # Dial this value in but start low!  Keep in mind that smoking should occur sometime near the end of the 50 seconds when this value is tuned in.
 
 # Specify training program wait values
-wait1 = 50
+wait1 = 30
 wait2 = 10
 
 # Test Control Script
-node0.sendLogmode(2)
+node0.setLogmode(2)  # Set the node to fast logmode
 m_to_train.setEnable(True)
 tf.update()
 tf.delay(wait1)  # Internally calls tf.update() until a timer has surpassed 1.0 second
 node0.disableAll() # Disable all at end of program (or disable just m_to_train)
 tf.delay(wait2) # Continue collecting data until the end of program
-node0.sendLogmode(0)
+node0.setLogmode(0)
 tf.update()
 tf.endAll() # Closes node devices (serial.close())
 
