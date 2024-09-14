@@ -36,7 +36,7 @@ m_to_train.setMode("percent")  # Train mode does not work yet.  This is the best
 m_to_train.setSetpoint(0.1)  # Dial this value in but start low!  Keep in mind that smoking should occur sometime near the end of the 50 seconds when this value is tuned in.
 
 # Specify training program wait values
-wait1 = 50
+wait1 = 30
 wait2 = 10
 
 # Test Control Script
@@ -46,12 +46,10 @@ tf.update()
 tf.delay(wait1)  # Internally calls tf.update() until a timer has surpassed 1.0 second
 node0.disableAll() # Disable all at end of program (or disable just m_to_train)
 tf.delay(wait2) # Continue collecting data until the end of program
-node0.sendLogmode(0)
+node0.setLogmode(0)
 tf.update()
 tf.endAll() # Closes node devices (serial.close())
-print(node0.nodedict)
-print(node0.m1dict)
-print(node0.m2dict)
+
 
 # This is a new feature, but it would create a plot like I created in my niti-train-program.py based on the data stored to this text file.  You can parse it to create the sensor data arrays and then plot using the exact same method I used in my script
 #tf.plotting(output_path)
