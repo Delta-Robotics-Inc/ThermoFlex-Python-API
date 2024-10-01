@@ -15,7 +15,8 @@ AMP = "amps"
 VOLT = "volts"
 DEG =  "degree"
 COMADDR = 0x11111111111
-        
+"{COMADDR} {node.addr} {node.idnum} {command.name} {command.device}"     
+
 def send_command_str(node:object, command): #construct string then send
     '''
     
@@ -24,7 +25,7 @@ def send_command_str(node:object, command): #construct string then send
     '''
     command_str = None
     port = node.arduino
-    command_str = f"{COMADDR} {node.addr} {node.idnum} {command.name} {command.device}"
+    command_str = f"{command.name} {command.device}"
     if command.code == 0xFF or command.code == 0x04:
         command_str = command_str
         
@@ -136,7 +137,7 @@ class node:
         self.idnum = idnum
         self.serial = serial 
         self.port0 = port0
-        self.address = None #TODO add in recieve func
+        self.addr = None #TODO add in recieve func
         self.arduino = None
         self.sessid = None
         self.logmode = 0
@@ -170,7 +171,9 @@ class node:
                 self.arduino = s.Serial(port = self.port0 , baudrate=115200, timeout=1)
                 
             except s.SerialException:
-                print('Serial not opened, check port status')        
+                print('Serial not opened, check port status')
+        finally:
+            return self.arduino
             
         
     def closePort(self):
@@ -260,8 +263,8 @@ class node:
         self.arduino.open()
         
         status = command_t(name = 'status', params = [])
-        send_command(self, status)
-        #send_command_str(self, status)
+        #send_command(self, status)
+        send_command_str(self, status)
         
         for x in range(0,37): #30 lines for status check
             buffer = self.arduino.readline().decode("utf-8").strip()
@@ -392,7 +395,7 @@ class node:
             command = command_t(SE, device = f'm{self.muscles[x].idnum+1}', params = [False] )
             self.command_buff.append(command)
     
-    def update(self, sendformat:int = 0):
+    def update(self, sendformat:int = 1):
         '''
         
         Updates the status of the node. Send format is by default 0-ascii or 1-string format.
@@ -415,16 +418,15 @@ class node:
                 if sendformat == 0:
                
                     send_command(self,x)
-                    self.command_buff.remove(x)
-            
+                                
                 elif sendformat == 1:        
                 
                     send_command_str(self,x)
-                    self.command_buff.remove(x)
-                
+                                    
                 else:
                     raise ValueError("Incorrect send format")
-                                       
+                
+                self.command_buff.remove(x)                       
 #---------------------------------------------------------------------------------------  
 
 class muscle:

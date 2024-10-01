@@ -14,7 +14,7 @@ PERCENT = "percent"
 AMP = "amps"
 VOLT = "volts"
 DEG =  "degree"
-
+COMADDR = 0x11111111111
         
 def send_command_str(node:object, command): #construct string then send
     '''
@@ -24,18 +24,18 @@ def send_command_str(node:object, command): #construct string then send
     '''
     command_str = None
     port = node.arduino
+    command_str = f"{COMADDR} {node.addr} {node.idnum} {command.name} {command.device}"
     if command.code == 0xFF or command.code == 0x04:
-        command_str = f"{command.name} {command.device} \n"
+        command_str = command_str
         
-        port.write(command_str.encode('utf-8'))
-        
+    elif command.code == 0xFE:
+        pass
     else:    
-        command_str = f"{command.name} {command.device} "
         
         for p in command.params:
             command_str = command_str + str(p).lower() # Current string implementation
              
-        port.write(f"{command_str} \n".encode('utf-8'))       
+    port.write(f"{command_str} \n".encode('utf-8'))       
     
     t.sleep(0.05)
 
@@ -47,23 +47,23 @@ def send_command(node:object, command):
     '''
     
     port = node.arduino
-    command_list = None
-    command_params = None
+    command_final = None
+    command_params = []
+    command_list =[COMADDR, node.addr, node.idnum, command.code, command.devcode]
     
     if command.code == 0xFF or command.code == 0x04:
-        command_list = bytearray([command.code, command.devcode])
-        
-        command_final = command_list
+                
+        command_final = bytearray(command_list)
     else:    
-        command_list = bytearray([command.code, command.devcode])
-        
+                
         for p in command.params:
-            command_params = command_params + bytearray(p)  # Current string implementation
+            command_params.append(p) # Current string implementation
         
-        command_final = command_list + command_params
-    port.write(command_final.encode('ascii'))
+        command_final = bytearray(command_list + command_params)
+    port.write(command_final)
     t.sleep(0.05)      
 
+#TODO recieve command function
 
 #---------------------------------------------------------------------------------------
 class command_t:
@@ -79,9 +79,9 @@ class command_t:
 			       "set-setpoint": [0x03, [int, float]], #mode, value
 			       "status": [0x04, []],
 			       "log-mode": [0x06, [int]], #log mode(subject to change)
-			       "reset": [0xFF, []] 
-			       }
-	
+			       "reset": [0xFF, []]
+			       } 
+
     devicedef = {"all": 0x07, "node": 0x00, "m1": 0x01, "m2": 0x02}
 	
     modedef = {"percent": 0, "amps": 1, "volts": 2,"degree": 3,"ohms": 4, "train" : 5, "manual": 6}
@@ -121,8 +121,7 @@ class command_t:
             self.code = command_t.commanddefs[name]
         except:
             self.code = 0x00  # Invalid code reserved for 0
-            raise KeyError("Invalid command name")
-                
+            raise KeyError("Invalid command name")     
                        
         if self.isValid(command = self.name, params = self.params) is True:
             pass
@@ -132,12 +131,13 @@ class command_t:
 #---------------------------------------------------------------------------------------
 
 class node:
-    filepath = '' #logging filepath
     
-    def __init__(self, idnum, port0, prodid, mosports:int = 2):
+    def __init__(self, idnum, port0, serial, mosports:int = 2): #network status
         self.idnum = idnum
-        self.prodid = prodid
+        self.serial = serial 
         self.port0 = port0
+        self.address = None #TODO add in recieve func
+        self.arduino = None
         self.sessid = None
         self.logmode = 0
         self.nodedict = {"A":[],"B":[],"C":[],"D":[]}
@@ -146,9 +146,10 @@ class node:
         self.mosports = mosports
         self.muscles = {}
         self.command_buff = []
-        self.logstate = {'filelog':False, 'dictlog':False, 'printlog':False}
+        self.logstate = {'filelog':False, 'dictlog':False, 'printlog':False, 'binarylog':False}
         self.buffer = None
-        self.arduino = None
+        self.bufflist = []
+        
         
     
     def openPort(self): 
@@ -172,7 +173,6 @@ class node:
                 print('Serial not opened, check port status')        
             
         
-#TODO redo with serial .is_open() and .open()
     def closePort(self):
         '''
         
@@ -260,8 +260,8 @@ class node:
         self.arduino.open()
         
         status = command_t(name = 'status', params = [])
-        #send_command(self, status)
-        send_command_str(self, status)
+        send_command(self, status)
+        #send_command_str(self, status)
         
         for x in range(0,37): #30 lines for status check
             buffer = self.arduino.readline().decode("utf-8").strip()
@@ -277,8 +277,8 @@ class node:
         self.arduino.open()
         
         reset = command_t(name = 'reset', params = [])
-        #send_command(self, status)
-        send_command_str(self, reset)
+        send_command(self, reset)
+        #send_command_str(self, reset)
         for x in range(0,10): #30 lines for status check
             buffer = self.arduino.readline().decode("utf-8").strip()
             
@@ -392,7 +392,7 @@ class node:
             command = command_t(SE, device = f'm{self.muscles[x].idnum+1}', params = [False] )
             self.command_buff.append(command)
     
-    def update(self, sendformat:int = 1):
+    def update(self, sendformat:int = 0):
         '''
         
         Updates the status of the node. Send format is by default 0-ascii or 1-string format.
@@ -402,8 +402,15 @@ class node:
         try:
             self.buffer = self.arduino.readline()
             
+            if len(self.bufflist) >= 50:
+                self.bufflist.pop(0)
+                self.bufflist.append(self.buffer)
+            else:
+                self.bufflist.append(self.buffer)
+            
+            
         finally:
-            for x in self.command_buff:
+            for x in self.command_buff: #TODO: replace these with nodenetwork connections? format for single node and nodenetwork
                              
                 if sendformat == 0:
                

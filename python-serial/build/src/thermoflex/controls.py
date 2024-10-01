@@ -13,15 +13,13 @@ import time as t
 import os
 
 prt = stl.comports(include_links=False)
-nodecount = 0
 prod = [105] # Product id list
-threadlist = []
-sess_filepath = os.getcwd() #set base filepath
+sess_filepath = os.getcwd().replace("\\","/") #set base filepath
 
 
 def threaded(func):
-    
-    
+    global threadlist
+    threadlist = []
     def wrapper(*args, **kwargs):
         thread = thr.Thread(target=func, args=args, kwargs = kwargs)
         thread.start()
@@ -32,7 +30,7 @@ def threaded(func):
 
 #-----------------------------------------------------------------------------------------------------------
 
-def discover(proid = prod):  # Add to node list here
+def discover(proid = prod):  
     '''
    
     Takes a list of product id's and returns a list of Node-class objects.
@@ -47,22 +45,20 @@ def discover(proid = prod):  # Add to node list here
     nodel: list
         DESCRIPTION. A list of the node objects with their idnumbers, ports, and product id as identifiers
     '''
-    global nodel, nodecount
+    global nodel, nodecount, SN
     nodel = []
     ports = {}
     
-    if nodecount==0:
-        z = nodecount
-    else:
-        z = nodecount-1
+    
+    z = len(nodel)
 
     for por in prt:
-        ports[por.pid]=por.name    
+        ports[por.serial_number]=por.name    
         
-    for p in proid:
+    for p in proid:#TODO: add sessionlist and session acquisition
         for key in ports.keys():
             if p == key:
-                nodeob = node(z+1,ports[key],key)
+                nodeob = node(z+1,ports[key],int(key))
                 nodel.append(nodeob)
                 print(nodel[z].port0)
                 nodel[z].openPort()
@@ -71,7 +67,7 @@ def discover(proid = prod):  # Add to node list here
     nodecount = len(nodel)
     return nodel
                          
-def rediscover(idn): #id number
+def rediscover(idn): #TODO: put this in discover, have discover check for existing node
     '''
     
     Takes node-object idnumber and tries to find corresponding port.
@@ -80,9 +76,9 @@ def rediscover(idn): #id number
     ports = {}
     
     for por in prt:
-        ports[por.pid]=por.name
+        ports[SN]=por.name
     for n in nodel:
-        if nodel[n].prodid == idn:
+        if nodel[n].serial == idn:
             nodel[n].port0 = ports[idn] 
  
     #TODO Later: use serial numbers to track individual devices   
@@ -97,7 +93,7 @@ def timer(time):
         timeleft-=1
         t.sleep(1)
 
-#Thread the update and delay functions?
+
 def update(): #choose which node to update and the delay
     '''
     
@@ -107,7 +103,7 @@ def update(): #choose which node to update and the delay
          
     for node in nodel:
         node.update()
-        if node.logstate['dictlog'] or node.logstate['printlog'] or node.logstate['filelog']== True:
+        if node.logstate['dictlog'] or node.logstate['printlog'] or node.logstate['filelog']or node.logstate['binarylog']== True:
             logTo(node,node.buffer)
         
 def delay(time):
@@ -137,9 +133,9 @@ def logTo(node:object, logdata):
     '''
     filepath = sess_filepath + f'\logs\node{node.idnum}logdata'
     
-    logdata = logdata.decode("utf-8").strip()
+    readlog = logdata.decode("utf-8").strip()
     
-    nodelist = list(node.nodedict.keys())
+    nodelist = list(node.dict.keys())
     m1list = list(node.m1dict.keys())
     m2list = list(node.m2dict.keys())
     nodedict2 = node.nodedict.copy()
@@ -154,11 +150,14 @@ def logTo(node:object, logdata):
         else:   
             try: 
                 
-                splitbuff = logdata.split(' ')
+                splitbuff = readlog.split(' ')
                 splitnode = splitbuff[:splitbuff.index('M1')]
                 splitm1 = splitbuff[splitbuff.index('M1') + 1:splitbuff.index('M2')]
                 splitm2 = splitbuff[splitbuff.index('M2') + 1:]
             
+                if node.logstate['printlog'] == True:
+                    print(str(readlog))
+                
                 if node.logstate['dictlog'] == True: #checks log data         
                     
                     for x in nodelist:
@@ -179,8 +178,9 @@ def logTo(node:object, logdata):
                         else:
                             node.m2dict[x].append(float(splitm2[m2list.index(x)]))
                             
-                if node.logstate['printlog'] == True:
-                    print(str(logdata))
+                if node.logstate['binarylog'] == True:
+                    with open('{filepath}\binary\logdata.ses', 'a') as f:
+                        f.write(logdata)
                 
                 if node.logstate['filelog'] == True: 
                     
