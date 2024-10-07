@@ -9,10 +9,10 @@ import multiprocessing as mp
 import os
 import shutil as sh
 import venv
-from thermoflex.controls import *
+from .controls import *
 
 base_path = os.getcwd().replace("\\","/") + '/ThermoflexSessions'
-sessionl = []
+
 
 
 COMSPATH = '/path/to/commands.py'
@@ -32,39 +32,43 @@ def threaded(func):
 
     return wrapper
 
-def multiprocess(func):
-    pass
 
    
 class session(venv.EnvBuilder): 
-    sescount = len(sessionl)
+    sessionl = []
+    sescount = len(session.sessionl)
     
     
-    def __init__(self, connode:object,iden = sescount+1): #venv directory, scripts, 
+    def __init__(self, connode:object): #venv directory, scripts, 
         
         super().__init__()
-        self.id = iden
-        self.scripts = ['commands.py','controls.py']
-        sessionl.append(self)
+        session.sessionl.append(self)
+        self.id = session.sessionl.index(self)
+        self.scripts = []
         self.connode = connode
-        self.launch()
-        self.environment = super().ensure_directories(f'{base_path}/session{self.id}').env_dir #environment object use
+        self.environment = None #setup by launch; path dir string
         self.running = False
-       
+        self.launch()
+        self.setlogpath()
         
     
     def launch(self):
         
-        super().create(f'{base_path}/session{self.id}')
-        self.setlogpath()
-        os.makedirs(f'{base_path}/Session{self.id} log')
-        for x in self.scripts:
-            super().setup_scripts(x)    
+        try:
+            fpath = os.path.exists(f'{base_path}/session{self.id}')
+            if fpath == False:            
+                super().create(f'{base_path}/session{self.id}')
+                os.makedirs(f'{base_path}/Session{self.id} log')
+                for x in self.scripts:
+                    super().setup_scripts(x) 
+        finally:
+            self.connode.logstate['binarylog'] = True
+            self.environment = super().ensure_directories(f'{base_path}/session{self.id}').env_dir   
+            os.chdir(self.environment)
     
-
-    def run(self):#thread&multiprocessing
+    @threaded
+    def run(self):
         self.running = True
-        self.connode.logstate['binarylog'] = state        
         while self.running == True:
             logTo(self.connode, self.connode.buffer)
             self.connode.update() #terminal
@@ -74,16 +78,17 @@ class session(venv.EnvBuilder):
     
     
     def switch(self,sess:object):
-        sessionl[sess].stop()
-        sessionl[self].run()        
+        session.sessionl[sess].stop()
+        os.chdir(self.environment)
+        session.sessionl[self].run()        
         
         pass #switch cwd to new sess
     
     def end(self): 
         
         sh.copytree(f'{self.environment}/logs' , f'{base_path}/Session{self.id} log', dirs_exist_ok = True)
-        os.remove(self.environment.env_dir) #remove path w/ string, self.environment is an object
-        
+        os.remove(self.environment)
+        self.connode.closePort()
     
     def logging(self):
         from .controls import logTo
@@ -91,17 +96,19 @@ class session(venv.EnvBuilder):
     
         
     def setlogpath(self):
+        
+        os.makedirs(f'{self.environment}/logs/node{self.connode.idnum}logdata/binary')
         BINARYDATA = f'{self.environment}/logs/node{self.connode.idnum}logdata/binary/logdata.ses'
         NODEDATA = f'{self.environment}/logs/node{self.connode.idnum}logdata/node.csv'
-        with open(BINARYDATA, 'w') as f:
+        with open(BINARYDATA, 'xb') as f:
             pass
-        with open(NODEDATA, 'w') as f:
+        with open(NODEDATA, 'xt') as f:
             pass
         for x in range(0,self.connode.mosports):
             MUSCLEDATA = f'{self.environment}/logs/node{self.connode.idnum}logdata/M{x+1}.csv'
-            with open(MUSCLEDATA, 'w') as f:
+            with open(MUSCLEDATA, 'xt') as f:
                 pass
-
+            
         
         
 def activesession(session:object):
@@ -112,10 +119,13 @@ def sessionswitch(oldsess:object,newsess:object):
     
 def endsession(session:object):
     session.end()
+    del session
             
 
 for th in threadlist:
         th.join()
+
+
 #node and can bus id
 #nodenetwork and node
 #pc asks fro can ids

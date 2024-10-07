@@ -1,0 +1,257 @@
+//=============================================================================
+// TF Node Messages - Protocol Buffer file
+// - This file contains ThermoFlex Node command/response definitions in the protobuf language
+// - TF Node devices will only accept command instructions given in this format
+// - In order to utilize the tfnode-messages format, this .proto file needs to be compiled into your system's respective language
+// - For more information, visit https://protobuf.dev/
+//=============================================================================
+
+syntax = "proto3";
+
+package tfnode;
+
+// Packet Structure
+// [Start Byte][Packet Length][Protocol Version][Sender ID Type][Destination ID Type][Sender ID][Destination ID][Data][Checksum][End Byte]
+//         1               2                 1                  1                             3              3    x           1          1   | Total = 13 + x
+
+// Map of Command Function Codes
+enum FunctionCode {
+  FUNCTION_RESET = 0;               // Reset the device
+  FUNCTION_ENABLE = 1;              // Enable the specified device
+  FUNCTION_DISABLE = 2;             // Disable the specified device
+  FUNCTION_SET_MODE = 3;            // Set the mode of the specified device
+  FUNCTION_SET_SETPOINT = 4;        // Set the setpoint of the specified device
+  FUNCTION_CONFIGURE = 5;           // Configure the specified device
+  FUNCTION_STATUS = 6;              // Request status from the specified device
+  FUNCTION_SILENCE_NODE = 7;        // Silence or unsilence the node
+  // Add more function codes as needed
+}
+
+// Map of possible responses/acknowledgements to sent commands
+enum ResponseCode {
+  RESPONSE_SUCCESS = 0;
+  RESPONSE_FAILED = 1;
+  RESPONSE_INVALID_DEVICE = 2;
+  RESPONSE_UNSUPPORTED_COMMAND = 3;
+  RESPONSE_ERROR = 4;
+  // Add more response codes as needed
+}
+
+// Device identifiers (There is one Node device and multiple SMAController devices)
+enum Device {
+  DEVICE_ALL = 0;
+  DEVICE_NODE = 1;
+  DEVICE_PORTALL = 2;
+  DEVICE_PORT1 = 3;  // Sometimes referred to as "M1"
+  DEVICE_PORT2 = 4;  // Sometimes referred to as "M2"
+  // Add more devices as needed
+}
+
+// Device Status modes
+enum DeviceStatusMode {
+  STATUS_NONE = 0;            // Stop periodic response from specified device
+  STATUS_COMPACT = 1;         // Report default status values for specified device 
+  STATUS_DUMP = 2;            // Report all relevant data for specified device (pin config, variables, protocol version, etc)
+  STATUS_DUMP_READABLE = 3;   // Report a human readable dump (For systems that do cannot parse this protocol)
+  // Add more status modes as needed
+}
+
+// Operating modes - SMA stands for "Shape Memory Alloy"
+enum SMAControlMode {
+  MODE_PERCENT = 0;
+  MODE_AMPS = 1;
+  MODE_VOLTS = 2;
+  MODE_OHMS = 3;
+  MODE_TRAIN = 4;
+}
+
+
+//=============================================================================
+// Node Command Definitions
+//=============================================================================
+
+// A Command that is specifically designed to run on a ThermoFlex Node Controller
+message NodeCommand {
+
+  oneof command {
+    ResetCommand reset = 1;
+    EnableCommand enable = 2;
+    DisableCommand disable = 3;
+    SetModeCommand set_mode = 4;
+    SetSetpointCommand set_setpoint = 5;
+    ConfigureSettingsCommand configure_settings = 6;
+    StatusCommand status = 7;
+    SilenceNodeCommand silence_node = 8;
+    // Add more commands as needed
+  }
+}
+
+// Reset the entire node firmware, or reset SMAController (reverts to default SMAControlMode and Setpoint settings loaded from memory)
+message ResetCommand {
+  Device device = 1; // Default to DEVICE_ALL
+}
+
+// Enables specified SMAController port (DEVICE_NODE is invalid)
+message EnableCommand {
+  Device device = 1;
+}
+
+// Disables specified SMAController port (DEVICE_NODE is invalid)
+message DisableCommand {
+  Device device = 1;
+}
+
+// Sets SMAControlMode on specified SMAController port (DEVICE_NODE is invalid)
+message SetModeCommand {
+  Device device = 1;
+  SMAControlMode mode = 2;
+}
+
+// Sets setpoint for specified SMAControlMode on specified SMAController port (DEVICE_NODE is invalid)
+message SetSetpointCommand {
+  Device device = 1;
+  SMAControlMode mode = 2;
+  float setpoint = 3;
+}
+
+// Fully configures a device's default and current settings
+message ConfigureSettingsCommand {
+  Device device = 1; // Target device for configuration
+
+  // In the "Configuration Definitions" section, define specific settings to pass
+  oneof device_config {
+    NodeSettings node_config = 2;
+    SMAControllerSettings sma_controller_config = 3;
+    // Add more device-specific configs if needed
+  }
+}
+
+// Requests specified status information from specified device.  Optional repetitive reporting
+message StatusCommand {
+  Device device = 1; // Default to DEVICE_ALL
+  DeviceStatusMode mode = 2;
+}
+
+// Silence the node until unsilenced (A method for dealing with a babbling Node)
+message SilenceNodeCommand {
+  bool silence = 1; // true to silence, false to unsilence
+}
+
+
+//=============================================================================
+// Node Response Definitions
+//=============================================================================
+
+// Standard response object sent back from TF Node that will contain a specific response message
+message Response {
+
+  oneof response {
+    GeneralResponse general_response = 1;
+    StatusResponse status_response = 2;
+    // Add more response types as needed
+  }
+}
+
+// The Node's general response to a processed command (or general response)
+message GeneralResponse {
+  Device device = 1;  // Device sending the response
+  FunctionCode received_cmd = 2;
+  ResponseCode response_code = 3;
+}
+
+// The Node's response to a status request
+message StatusResponse {
+  Device device = 1; // Device reporting status
+
+  oneof status_response {
+      NodeStatusCompact node_status_compact = 2;
+      NodeStatusDump node_status_dump = 3;
+      SMAStatusCompact sma_status_compact = 4;
+      SMAStatusDump sma_status_dump = 5;
+  }
+}
+
+
+//=============================================================================
+// Device-Specific Settings/Configuration Definitions
+//=============================================================================
+
+// Settings Configuration for the Node device
+message NodeSettings {
+  uint32 can_id = 1;
+  // Add other node-specific configuration settings
+}
+
+// Settings Configuration for an SMAController device
+message SMAControllerSettings {
+  SMAControlMode default_mode = 1;
+  float default_setpoint = 2;
+  float rctrl_kp = 3;
+  float rctrl_ki = 4;
+  float rctrl_kd = 5;
+  // Add other SMAController-specific configuration settings
+}
+
+
+//=============================================================================
+// Device-Specific Status Messages
+//=============================================================================
+
+// Compact Status information for the Node device
+message NodeStatusCompact {
+  uint32 uptime = 2; // Uptime in seconds
+  uint32 error_code = 3;
+  float v_supply = 4;
+  float pot_val = 5;
+  // Add other node-specific status fields
+}
+
+// Detailed Status information dump for the Node device
+message NodeStatusDump {
+  NodeStatusCompact compact_status = 1;
+  NodeSettings loaded_settings = 2;
+
+  // Make sure the following values are not included already in compact status
+  string firmware_version = 3;
+  string board_version = 4;
+  uint32 muscle_cnt = 5;
+  uint32 log_interval_ms = 6;
+  float vrd_scalar = 7;
+  float vrd_offset = 8;
+  float max_current = 9;
+  float min_v_supply = 10;
+}
+
+
+// Compact status for SMAController
+message SMAStatusCompact {
+  Device device_port = 1;
+  bool enabled = 2;
+  SMAControlMode mode = 3;
+  float setpoint = 4;
+  float output_pwm = 5;
+  float load_amps = 6;
+  float load_vdrop = 7;
+  float load_mohms = 8;
+  // TODO include pin assignments
+}
+
+// Detailed status dump for SMAController (includes most settings and variables within firmware)
+message SMAStatusDump {
+  SMAStatusCompact compact_status = 1;
+  SMAControllerSettings loaded_settings = 2;
+
+  // Make sure the following values are not included already in compact status
+  float vld_scalar = 3;
+  float vld_offset = 4;
+  float r_sns_ohms = 5;
+  float amp_gain = 6;
+  float af_mohms = 7;
+  float delta_mohms = 8;
+  uint32 trainState = 9;
+  float rctrl_kp = 10;  // PID configuration
+  float rctrl_ki = 11;
+  float rctrl_kd = 12;
+  // TODO Include additional detailed fields
+  // Fields will include pin definitions, all configured modes and setpoints, and important internal variables
+}

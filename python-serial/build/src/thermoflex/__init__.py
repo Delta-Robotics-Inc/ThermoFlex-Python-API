@@ -1,6 +1,18 @@
 #create necessary commmands
-from .commands import *
-from .controls import *
 
+from .sessions import *
+
+'''
+.py files
+    discover/rediscover
+    session creation
+    session ending
+    session switching
+    node commands/controls
+    node information
+
+protobuffers
+file error handling
+'''
 
 

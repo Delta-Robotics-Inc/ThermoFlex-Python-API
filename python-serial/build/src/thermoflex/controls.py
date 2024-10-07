@@ -5,7 +5,6 @@ Created on Thu Sep 12 12:38:45 2024
 @author: School
 """
 from .commands import *
-#from .sessions import session
 import threading as thr
 import serial.tools.list_ports as stl
 import pandas as pd
@@ -53,12 +52,12 @@ def discover(proid = prod):
     z = len(nodel)
 
     for por in prt:
-        ports[por.serial_number]=por.name    
+        ports[por.pid]=[por.name,por.serial_number]    
         
     for p in proid:#TODO: add sessionlist and session acquisition
         for key in ports.keys():
             if p == key:
-                nodeob = node(z+1,ports[key],int(key))
+                nodeob = node(z+1,ports[key][0],ports[key][1])
                 nodel.append(nodeob)
                 print(nodel[z].port0)
                 nodel[z].openPort()
@@ -133,9 +132,9 @@ def logTo(node:object, logdata):
     '''
     filepath = sess_filepath + f'\logs\node{node.idnum}logdata'
     
-    readlog = logdata.decode("utf-8").strip()
     
-    nodelist = list(node.dict.keys())
+    
+    nodelist = list(node.nodedict.keys())
     m1list = list(node.m1dict.keys())
     m2list = list(node.m2dict.keys())
     nodedict2 = node.nodedict.copy()
@@ -148,6 +147,7 @@ def logTo(node:object, logdata):
             pass #does nothing statement upon being empty
 
         else:   
+            readlog = logdata.decode("utf-8").strip()
             try: 
                 
                 splitbuff = readlog.split(' ')
