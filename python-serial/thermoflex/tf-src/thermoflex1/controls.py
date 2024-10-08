@@ -29,7 +29,7 @@ def threaded(func):
 
 #-----------------------------------------------------------------------------------------------------------
 
-def discover(proid = prod):  
+def discover_orig(proid = prod):  
     '''
    
     Takes a list of product id's and returns a list of Node-class objects.
@@ -44,41 +44,51 @@ def discover(proid = prod):
     nodel: list
         DESCRIPTION. A list of the node objects with their idnumbers, ports, and product id as identifiers
     '''
-    global nodel, nodecount, SN
-    nodel = []
+    
+    node.nodel = []
     ports = {}
     
     
     z = len(nodel)
 
     for por in prt:
-        ports[por.pid]=[por.name,por.serial_number]    
+        ports[por.serial_number]= por.name    
         
-    for p in proid:#TODO: add sessionlist and session acquisition
+    for p in proid:
         for key in ports.keys():
             if p == key:
-                nodeob = node(z+1,ports[key][0],ports[key][1])
-                nodel.append(nodeob)
+                nodeob = node(z+1, ports[key])
+                nodeob.serial = key
+                node.nodel.append(nodeob)
                 print(nodel[z].port0)
                 nodel[z].openPort()
                 nodel[z].closePort()
                 z+=1
-    nodecount = len(nodel)
-    return nodel
-                         
-def rediscover(idn): #TODO: put this in discover, have discover check for existing node
+    nodecount = len(node.nodel)
+    return node.nodel
+#TODO: put a rediscover in discover, have discover check for existing node                         
+def discover(proid = prod): 
     '''
     
     Takes node-object idnumber and tries to find corresponding port.
     
     '''
+    
     ports = {}
     
+    z = len(nodenet.netlist)
+
     for por in prt:
-        ports[SN]=por.name
-    for n in nodel:
-        if nodel[n].serial == idn:
-            nodel[n].port0 = ports[idn] 
+        ports[por.pid]= [por.name, por.serial_number]    
+        
+    for p in proid:
+        for key in ports.keys():
+            if p == key:
+                nodenetw = nodenet(z+1, ports[key][0], ports[key][1])
+                node.nodel[z].openPort()
+                node.nodel[z].closePort()
+                z+=1
+    return node.nodel 
  
     #TODO Later: use serial numbers to track individual devices   
 
@@ -121,6 +131,7 @@ def endAll():
     
     for node in nodel:
         node.closePort()
+        del node
 
 @threaded
 def logTo(node:object, logdata):

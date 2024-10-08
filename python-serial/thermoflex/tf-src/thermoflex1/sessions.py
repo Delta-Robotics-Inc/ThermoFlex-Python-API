@@ -15,8 +15,8 @@ base_path = os.getcwd().replace("\\","/") + '/ThermoflexSessions'
 
 
 
-COMSPATH = '/path/to/commands.py'
-CONTPATH = '/path/to/controls.py' #TODO filepaths of installing scripts
+COMSPATH = 'scripts/commands.py'
+CONTPATH = 'scripts/controls.py' #TODO filepaths of installing scripts
 
 #session controller class?
 
@@ -39,12 +39,12 @@ class session(venv.EnvBuilder):
     sescount = len(session.sessionl)
     
     
-    def __init__(self, connode:object): #venv directory, scripts, 
+    def __init__(self, connode:object,iden = sescount+1): #venv directory, scripts, 
         
-        super().__init__()
+        super().__init__(system_site_packages=True)
+        self.id = iden
+        self.scripts = []#[COMSPATH,CONTPATH]; using system site packages until further notice
         session.sessionl.append(self)
-        self.id = session.sessionl.index(self)
-        self.scripts = []
         self.connode = connode
         self.environment = None #setup by launch; path dir string
         self.running = False
@@ -65,14 +65,15 @@ class session(venv.EnvBuilder):
             self.connode.logstate['binarylog'] = True
             self.environment = super().ensure_directories(f'{base_path}/session{self.id}').env_dir   
             os.chdir(self.environment)
-    
+            
+
     @threaded
     def run(self):
         self.running = True
         while self.running == True:
+            self.connode.update()
             logTo(self.connode, self.connode.buffer)
-            self.connode.update() #terminal
-    
+                
     def stop(self):
         self.running = False
     
@@ -125,9 +126,3 @@ def endsession(session:object):
 for th in threadlist:
         th.join()
 
-
-#node and can bus id
-#nodenetwork and node
-#pc asks fro can ids
-#double id system
-#[sendr address][dest address][can id][port][info]
