@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Sep 12 12:38:45 2024
+'''
+Comments
+'''
 
-@author: School
-"""
 from .commands import *
 import threading as thr
 import serial.tools.list_ports as stl

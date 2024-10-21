@@ -1,6 +1,11 @@
+'''
+Comments
+'''
+#TODO: rework serial reading; use read_until, read, threading,in_waiting.
 import serial as s
 import time as t
 from .tools import tfnode_messages_pb2 as tfproto
+import struct as st
 #arduino commands
 
 SE = "set-enable"
@@ -18,18 +23,30 @@ DEG =  "degree"
 
 STARTBYTE = 0x7E
 PROTOVER = 0x01
-SENDID = [0x11,0x11,0x11]
+SENDID = [0x01,0x02,0x03]
 IDTYPE = 0x00
 CHECKSUM = 0xFF
+PROTOSIZE = 1
+IDTYPESIZE = 1
+IDSIZE = 3
+CHECKSUM = 1
 
-def packet_size(data):
-    PROTOSIZE = 1
-    IDTYPESIZE = 1
-    IDSIZE = 3
-    CHECKSUM = 1
-    datasize = len(b'{data}')
-    length = PROTOSIZE + IDSIZE + IDSIZE + IDTYPESIZE + IDTYPESIZE + CHECKSUM + datasize
+def packet_size(data:str):
+    '''
+    Takes data string, returns 2 element tuple of 4 digit byte data length in integer
+    EX.[(01,75)]
+
+    '''
+    statics = PROTOSIZE + IDSIZE + IDSIZE + IDTYPESIZE + IDTYPESIZE + CHECKSUM
+    datasize = len(data)
+    length = statics + datasize
+    length = f'{length}'
+    while len(length)<4:
+        length = '0'+length
+    length = (int(length[:2]),int(length[2:]))
+
     return length
+
 def checksum_cal(dest_id, data):
     # Calculate checksum
     checksum = 0
@@ -42,6 +59,8 @@ def checksum_cal(dest_id, data):
         checksum ^= byte
     for byte in data:
         checksum ^= byte
+    return checksum
+
 def send_command_str(command, port): #TODO: construct packet in commmand, remove send_command options
     '''
     
@@ -49,11 +68,15 @@ def send_command_str(command, port): #TODO: construct packet in commmand, remove
     
     '''
      
-    command_list = command.packet
+    command_final = b''
+    for c in command.packet:
+        if type(c) == str:
+            command_final += bytes(c,'ascii')
+        elif type(c) == int:
+            command_final += st.pack('!B', c)
     
-    command_final = bytearray(command_list)
     print(port)
-    print(command_list)
+    print(command.packet)
     print(command_final)
     
     t.sleep(0.05)
@@ -64,28 +87,46 @@ def send_command(command, port):
     Sends commands recieved by command_t. Takes command_t object as arguments.
     
     '''
-     
-    command_list = command.packet
-    
-    command_final = command_list
+    command_final = b''
+    for c in command.packet:
+        if type(c) == str:
+            command_final += bytes(c,'ascii')
+        elif type(c) == int:
+            command_final += st.pack('!B', c)
     
     port.write(command_final)
     t.sleep(0.05)      
 
 
-def receive(node:object):
-#TODO recieve command: contiuosly get packets and delelgate or designate specific send for node messages
-    msg = node.arduino.readline()
-    msg = msg.decode('utf-8')
+def receive(network:object):
+    '''
+    id address from network
+    incomoing logging and changes
+
+    '''
+    start_time = t.time()
+    timeout = 1  # seconds
+    port = network.arduino
+    while True:
+        if port.in_waiting > 0:
+            incoming_data = port.read(port.in_waiting)
+            # Decode and print received data as characters
+            try:
+                msg = incoming_data.decode('ascii',errors = 'replace')
+
+            except UnicodeDecodeError:
+                print("[Error decoding data]")
+        elif t.time() - start_time > timeout:
+            # No more data, exit loop after timeout
+            break
+        else:
+            # No data, wait a bit before checking again
+            t.sleep(0.1)
+    #find packet
     return msg
 #TODO: id address pull from network
-'''
-id address from network
-incomoing logging and changes
-
-'''    
 #---------------------------------------------------------------------------------------
-
+# [Start Byte][Packet Length][Protocol Version][Sender ID Type][Destination ID Type][Sender ID][Destination ID][Data][Checksum]
 class command_t:
     
     '''
@@ -190,23 +231,26 @@ class command_t:
             command.reset.device = self.devc()
         
         return command.SerializetoString()
-# [Start Byte][Packet Length][Protocol Version][Sender ID Type][Destination ID Type][Sender ID][Destination ID][Data][Checksum]
+
 
     def packet_construction(self):
         
-        packet = [PROTOVER,IDTYPE,SENDID,self.node.addr, self.construct]
+        
+        packet = [PROTOVER,IDTYPE,IDTYPE,SENDID,self.destnode.addr]
         plength = packet_size(self.construct)
-        packet.inset(0,STARTBYTE)
-        packet.insert(1,plength)
-        packet.append(checksum_cal(self.node.addr,self.construct))
+        packet.insert(0,plength[1])
+        packet.insert(0,plength[0])
+        packet.insert(0,STARTBYTE)
+        packet.extend(construct)
+        packet.append(checksum_cal(self.destnode.addr,self.construct))
         p = []
         
         #construct packet in bytes
         for x in packet:
             if type(x) == str:
-                p.append(bytes(x,'ascii'))
+                p.append(x)
             elif type(x) == int:
-                p.append(bytes(x))
+                p.append(x)
         
         return p
     
@@ -235,8 +279,7 @@ class command_t:
         self.length = packet_size(self.construct)
         self.type = IDTYPE.index('CANID')
         self.packet = self.packet_construction()
-
-            
+         
 #---------------------------------------------------------------------------------------
 
 class nodenet:
@@ -255,7 +298,7 @@ class nodenet:
     def addNode(self,node):
         self.nodenet.append(node)
     
-    def nodeonNet(self):
+    def nodeonNet(self): #periodically sends network
         command_t(self.node0, name = "status", params = [1])
         send_command() #send network and recieve unknown response length
     
@@ -298,7 +341,13 @@ class nodenet:
 
     
     def receive_packet(self):
-        #TODO: receive and vaildate packet, use send_packet.py
+        packets = []
+        for x in range(0, len(self.nodenet)):
+            packets.append(recieve(self))
+        
+        #for msg in packets:
+           # for node in self.nodenet:
+                #if node.addr == packet_split(msg[]):
         
         pass
     

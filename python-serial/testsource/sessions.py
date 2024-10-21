@@ -1,9 +1,6 @@
-# Look into Marlin printer software
-"""
-Created on Fri Sep 13 17:57:09 2024
-
-@author: School
-"""
+'''
+Comments
+'''
 import threading as thr
 import multiprocessing as mp
 import os
