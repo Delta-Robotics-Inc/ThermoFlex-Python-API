@@ -72,11 +72,14 @@ def main():
     ser.flushInput()
 
     # Construct Packet 1 (addressed to node 0x01 0x02 0x03)
-    # [0x3a, 0x04, 0x10, 0x01, 0x20, 0x01]  corresponds to a SetStatusCommand with the following parameters:
+    # [0x3a, 0x04, 0x10, 0x01, 0x20, 0x01]  corresponds to a GetStatusCommand with the following parameters:
     # device = DEVICE_ALL, mode = STATUS_COMPACT, repeating = TRUE
-    # [0x3a, 0x02, 0x10, 0x01] corresponds to a SetStatusCommand with the following parameters:
+    # packet1 = construct_packet(destination_id=[0x01, 0x02, 0x03], data = [0x3a, 0x04, 0x10, 0x01, 0x20, 0x01])
+
+    # [0x3a, 0x02, 0x10, 0x01] corresponds to a GetStatusCommand with the following parameters:
     # device = DEVICE_ALL, mode = STATUS_COMPACT, repeating = FALSE
-    packet1 = construct_packet(destination_id=[0x01, 0x02, 0x03], data = [0x3a, 0x02, 0x10, 0x01])
+    #packet1 = construct_packet(destination_id=[0x01, 0x02, 0x03], data = [0x3a, 0x02, 0x10, 0x01])
+
 
     # Construct Packet 2 (addressed to a different node 0x04 0x05 0x06)
     packet2 = construct_packet(destination_id=[0x04, 0x05, 0x06])
