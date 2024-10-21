@@ -107,21 +107,37 @@ def receive(network:object):
     start_time = t.time()
     timeout = 1  # seconds
     port = network.arduino
+    i_d = b''
     while True:
         if port.in_waiting > 0:
-            incoming_data = port.read(port.in_waiting)
+            i_d += port.read(port.in_waiting)
             # Decode and print received data as characters
-            try:
-                msg = incoming_data.decode('ascii',errors = 'replace')
-
-            except UnicodeDecodeError:
-                print("[Error decoding data]")
+            for b in i_d: 
+                if 126 == b:                    
+                    try:
+                        z = i_d.index(b)
+                        l = i_d[z+1:z+3]
+                        n = ''
+                        for y in l:
+                            n += str(y)
+                        if int(n)+3 > port.in_waiting:
+                            break
+                    
+                    finally:                                               
+                        n = int(n)-10
+                        try:
+                            msg = (i_d[z+6:z+9],i_d[z+13:z+13+n].decode('ascii'))
+                        except UnicodeDecodeError:
+                                print("[Error decoding data]")
         elif t.time() - start_time > timeout:
             # No more data, exit loop after timeout
             break
         else:
             # No data, wait a bit before checking again
             t.sleep(0.1)
+
+        if len(msg)>0:
+            break    
     #find packet
     return msg
 #TODO: id address pull from network
@@ -295,13 +311,17 @@ class nodenet:
         self.port = port
         self.arduino = None
         self.node0 = node(0, self)
+        self.node0.addr = [0x01,0x02,0x03]
         self.nodenet = [] # list of connected nodes
         self.nodenet.append(self.node0)
         self.openPort()
         self.closePort()
+        self.addNode()
         
-    def addNode(self,node):
-        self.nodenet.append(node)
+    def addNode(self): # change later for incorporating nodes
+        node0 = node(len(node.nodel)+1,self)
+        node0.addr = [0x04,0x05,0x06]
+        self.nodenet.append(node0)
     
     def getDevice(self,addr):
         
@@ -356,7 +376,7 @@ class nodenet:
            
 
     
-    def receive_packet(self):
+    def receive_packet(self,node = None):
         packets = []
         for x in range(0, len(self.nodenet)):
             packets.append(receive(self))
@@ -471,7 +491,7 @@ class node:
             status = command_t(self, name = 'status', params = [2])
             send_command(status)
             #send_command_str(status)
-        
+            buffer = receive_packet()
         
             
             print(str(buffer))

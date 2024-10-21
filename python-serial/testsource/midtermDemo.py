@@ -23,8 +23,8 @@ if(__name__ == '__main__'):
     nodenet = nodenet_list[0]
 
     # Get node 1 and node 2 from node net by id
-    node1 = nodenet.getDevice(nodeid = [0x01, 0x02, 0x03])
-    node2 = nodenet.getDevice(nodeid = [0x04, 0x05, 0x06])
+    node1 = nodenet.getDevice([0x01, 0x02, 0x03])
+    node2 = nodenet.getDevice([0x04, 0x05, 0x06])
 
     # Example of how to characaterize muscles. 
     n1_muscle1 = tf.muscle(idnum=0, resist=340, diam=2, length=400)

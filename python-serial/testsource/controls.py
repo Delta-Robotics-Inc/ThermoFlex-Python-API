@@ -86,7 +86,7 @@ def discover(proid = prod):
                 node.nodel[z].openPort()
                 node.nodel[z].closePort()
                 z+=1
-    return node.nodel 
+    return nodenet.netlist
  
        
 
@@ -129,7 +129,7 @@ def endAll():
     '''
     
     for node in nodel:
-        node.closePort()
+        node.net.closePort()
         del node
 
 @threaded

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thermoflex"
-version = "0.0.2"
+version = "0.0.3"
 authors = [{name = "Marvin Stephens", email = "marvin.stephens44@yahoo.com"}]
 readme = "README_QUICK.MD"
 dependencies = ['pyserial == 3.5']
