@@ -1,0 +1,11 @@
+Session logger changes
+    session logs for entire network; 1 session per network
+Serial interface
+    creation
+    sending in and out
+Network manager
+    pulls from serial and pushes to everything
+    builds commands
+packet+protobuf
+    seperate building and creation
+CHECK DRAWING

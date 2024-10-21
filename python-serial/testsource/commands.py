@@ -303,6 +303,17 @@ class nodenet:
     def addNode(self,node):
         self.nodenet.append(node)
     
+    def getDevice(self,addr):
+        
+        for x in self.nodenet:
+            if addr == x.addr:
+                return x
+            else:
+                pass
+    
+    print('Node not found. Check your node address')
+
+
     def nodeonNet(self): #periodically sends network
         command_t(self.node0, name = "status", params = [1])
         send_command() #send network and recieve unknown response length
@@ -448,7 +459,7 @@ class node:
         
         self.closePort()
         
-    def status(self):
+    def status(self,):
         '''
         
         Requsts and collects the status from the device.
@@ -461,8 +472,7 @@ class node:
             send_command(status)
             #send_command_str(status)
         
-        for x in range(0,37): #30 lines for status check
-            buffer = receive(self)
+        
             
             print(str(buffer))
         
