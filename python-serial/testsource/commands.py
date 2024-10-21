@@ -168,22 +168,27 @@ class command_t:
                return False
        return True
     
-    def devc(self):
-        
+
+    def get_device_code(self) -> tfproto.Device:
+        """
+          Returns the device code based on the device code index.
+        """
+
         if self.devcode == 0:
-            devcode = tfproto.Device.DEVICE_ALL
+            device_code = tfproto.Device.DEVICE_ALL
         elif self.devcode == 1:
-            devcode = tfproto.Device.DEVICE_NODE
+            device_code = tfproto.Device.DEVICE_NODE
         elif self.devcode == 2:
-            devcode = tfproto.Device.DEVICE_PORTALL
+            device_code = tfproto.Device.DEVICE_PORTALL
         elif self.devcode == 3:
-            devcode = tfproto.Device.DEVICE_PORT1
+            device_code = tfproto.Device.DEVICE_PORT1
         elif self.devcode == 4:
-            devcode = tfproto.Device.DEVICE_PORT2
-            
-        return devcode
+            device_code = tfproto.Device.DEVICE_PORT2
+
+        return device_code           
         
-    def set_mode(self):
+
+    def set_mode(self) -> None:
         
         if self.params[0] =="percent":
             mode = tfproto.SMAControlMode.MODE_PERCENT
@@ -202,35 +207,35 @@ class command_t:
         '''
         Constructs the .proto command from command_t object
         '''
-        command = tfproto.NodeCommand()
+        node_cmd = tfproto.NodeCommand()
         if self.code == 0x01:
             if self.params[0] == True:
-                command.enable.device = self.devc()
+                node_cmd.enable.device = self.devc()
             elif self.params[0] == False:
-                command.disable.device = self.devc()
+                node_cmd.disable.device = self.devc()
          # ask Mark about .proto format- class structure
         elif self.code == 0x02:
-            command.set_mode.device = self.devc()
-            command.set_mode.mode = self.set_mode()
+            node_cmd.set_mode.device = self.devc()
+            node_cmd.set_mode.mode = self.set_mode()
         elif self.code == 0x03:
-            command.set_setpoint.device = self.devc()            
-            command.set_setpoint.mode = self.set_mode()
-            command.set_setpoint.setpoint = self.params[1]
+            node_cmd.set_setpoint.device = self.devc()            
+            node_cmd.set_setpoint.mode = self.set_mode()
+            node_cmd.set_setpoint.setpoint = self.params[1]
         elif self.code == 0x04:
-            command.status.device = self.devc()
-            command.status.mode = self.params[0]
+            node_cmd.status.device = self.devc()
+            node_cmd.status.mode = self.params[0]
         elif self.code == 0x05:
-            command.status.device = self.devc()
-            command.status.mode = 1
+            node_cmd.status.device = self.devc()
+            node_cmd.status.mode = 1
         elif self.code == 0x06:
-            command.configure_settings.device = self.devc()
-            command.configure_settings.can_id = self.params[0]
+            node_cmd.configure_settings.device = self.devc()
+            node_cmd.configure_settings.can_id = self.params[0]
         elif self.code == 0x07:
-            command.silence_node.silence = self.params[0]
+            node_cmd.silence_node.silence = self.params[0]
         elif self.code == 0xFF:
-            command.reset.device = self.devc()
+            node_cmd.reset.device = self.devc()
         
-        return command.SerializetoString()
+        return node_cmd.SerializetoString()
 
 
     def packet_construction(self):
@@ -343,7 +348,7 @@ class nodenet:
     def receive_packet(self):
         packets = []
         for x in range(0, len(self.nodenet)):
-            packets.append(recieve(self))
+            packets.append(receive(self))
         
         #for msg in packets:
            # for node in self.nodenet:
@@ -370,7 +375,8 @@ class node:
         self.nodedict = {"A":[],"B":[],"C":[],"D":[]}
         self.m1dict = {"A":[],"B":[],"C":[],"D":[],"E":[],"F":[],"G":[],"H":[],"I":[],"J":[],"K":[],"L":[]}
         self.m2dict = {"A":[],"B":[],"C":[],"D":[],"E":[],"F":[],"G":[],"H":[],"I":[],"J":[],"K":[],"L":[]}
-        self.mosports = mosports
+        self.mosports = mosports  # TODO rename this to be more verbose.  Is it number of ports?
+        # TODO use this same philisophy for all variable and method names
         self.muscles = {}
         self.command_buff = []
         self.logstate = {'filelog':False, 'dictlog':False, 'printlog':False, 'binarylog':False}
