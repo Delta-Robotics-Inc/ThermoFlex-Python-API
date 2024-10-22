@@ -266,7 +266,7 @@ class command_t:
             node_cmd.silence_node.silence = self.params[0]
         elif self.code == 0xFF:
             node_cmd.reset.device = self.get_device_code()
-        print(node_cmd.SerializeToString())
+        
         return node_cmd.SerializeToString()
 
 
@@ -508,10 +508,10 @@ class node:
                 self.net.openPort()
             finally:
                 status = command_t(self, name = 'status', params = [2])
-                #send_command(status,self.net.arduino)
-                send_command_str(status,self.net.arduino)
+                send_command(status,self.net.arduino)
+                #send_command_str(status,self.net.arduino)
                 buffer = receive(self.net)
-                return buffer[1].decode('ascii')
+                return buffer[1]
 
         elif type == 'compact':
             try:
@@ -522,7 +522,7 @@ class node:
                 #send_command(status,self.net.arduino)
                 send_command_str(status,self.net.arduino)
                 buffer = receive(self.net)
-                return buffer[1].decode('ascii')
+                return buffer[1]
 
         
     def reset(self, device = "node"):
