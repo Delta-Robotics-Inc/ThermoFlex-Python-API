@@ -7,6 +7,7 @@ Keywords: thermoflex,Delta,Delta Robotics
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 Requires-Dist: pyserial==3.5
+Requires-Dist: protobuf==5.28.2
 
 #### System Requirements
 

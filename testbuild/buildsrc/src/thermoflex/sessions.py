@@ -33,8 +33,7 @@ def threaded(func):
    
 class session(venv.EnvBuilder): 
     sessionl = []
-    sescount = len(session.sessionl)
-    
+    sescount = len(sessionl)    
     
     def __init__(self, connode:object,iden = sescount+1): #venv directory, scripts, 
         

@@ -82,9 +82,9 @@ def discover(proid = prod):
     for p in proid:
         for key in ports.keys():
             if p == key:
-                nodenetw = nodenet(z+1, ports[key][0], ports[key][1])
-                node.nodel[z].openPort()
-                node.nodel[z].closePort()
+                nodenetw = nodenet(z+1, ports[key][0])
+                nodenetw.openPort()
+                nodenetw.closePort()
                 z+=1
     return nodenet.netlist
  

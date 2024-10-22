@@ -37,7 +37,7 @@ if(__name__ == '__main__'):
 
     # Get node 1 and node 2 from node net by id
     node1 = nodenet.getDevice([0x01, 0x02, 0x03])
-    node2 = nodenet.getDevice([0x04, 0x05, 0x06])
+    node2 = nodenet.getDevice([0x01, 0x02, 0x03])
     
     print(node1.status("dump")) # Print status dump
     print(node2.status("compact"))

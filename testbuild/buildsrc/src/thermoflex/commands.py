@@ -23,7 +23,7 @@ DEG =  "degree"
 
 STARTBYTE = 0x7E
 PROTOVER = 0x01
-SENDID = [0x01,0x02,0x03]
+SENDID = [0x01,0x01,0x01]
 IDTYPE = 0x00
 CHECKSUM = 0xFF
 PROTOSIZE = 1
@@ -74,6 +74,8 @@ def send_command_str(command, port): #TODO: construct packet in commmand, remove
             command_final += bytes(c,'ascii')
         elif type(c) == int:
             command_final += st.pack('!B', c)
+        elif type(c) == bytes:
+            command_final += c
     
     print(port)
     print(command.packet)
@@ -93,6 +95,8 @@ def send_command(command, port):
             command_final += bytes(c,'ascii')
         elif type(c) == int:
             command_final += st.pack('!B', c)
+        elif type(c) == bytes:
+            command_final += c
     
     port.write(command_final)
     t.sleep(0.05)      
@@ -112,8 +116,9 @@ def receive(network:object):
         if port.in_waiting > 0:
             i_d += port.read(port.in_waiting)
             # Decode and print received data as characters
+            #print(i_d)
             for b in i_d: 
-                if 126 == b:                    
+                if b == 126:                    
                     try:
                         z = i_d.index(b)
                         l = i_d[z+1:z+3]
@@ -126,7 +131,7 @@ def receive(network:object):
                     finally:                                               
                         n = int(n)-10
                         try:
-                            msg = (i_d[z+6:z+9],i_d[z+13:z+13+n].decode('ascii'))
+                            msg = (i_d[z+6:z+9],i_d[z+12:z+12+n])
                         except UnicodeDecodeError:
                                 print("[Error decoding data]")
         elif t.time() - start_time > timeout:
@@ -136,8 +141,12 @@ def receive(network:object):
             # No data, wait a bit before checking again
             t.sleep(0.1)
 
-        if len(msg)>0:
-            break    
+        try:
+            if len(msg)>0:
+                break
+        except UnboundLocalError:
+            pass
+                
     #find packet
     return msg
 #TODO: id address pull from network
@@ -204,65 +213,79 @@ class command_t:
         return device_code           
         
 
-    def set_mode(self) -> None:
+    def set_mode(self) -> tfproto.SMAControlMode:
         
-        if self.params[0] =="percent":
+        if self.params[0] == 0:
             mode = tfproto.SMAControlMode.MODE_PERCENT
-        elif self.params[0] == "amp":
+        elif self.params[0] == 1:
             mode = tfproto.SMAControlMode.MODE_AMPS
-        elif self.params[0] == "voltage" :
+        elif self.params[0] == 2 :
             mode = tfproto.SMAControlMode.MODE_VOLTS
-        elif self.params[0] == "ohms":
+        elif self.params[0] == 3:
             mode = tfproto.SMAControlMode.MODE_OHMS
-        elif self.params[0] == "train":
+        elif self.params[0] == 4:
             mode = tfproto.SMAControlMode.MODE_TRAIN
            
         return mode
     
+    def statusenum(self,param) -> tfproto.DeviceStatusMode:
+        x = None
+        if param == 0:
+            x = tfproto.DeviceStatusMode.STATUS_NONE
+        if param == 1:
+            x = tfproto.DeviceStatusMode.STATUS_COMPACT
+        if param == 2:
+            x = tfproto.DeviceStatusMode.STATUS_DUMP
+        if param == 3:
+            x = tfproto.DeviceStatusMode.STATUS_DUMP_READABLE
+        return x
+    
     def sConstruct(self):
         '''
-        Constructs the .proto command from command_t object
+        Constructs the .proto command from command_t object. Returns bytes string.
         '''
         node_cmd = tfproto.NodeCommand()
         if self.code == 0x01:
             if self.params[0] == True:
-                node_cmd.enable.device = self.devc()
+                node_cmd.enable.device = self.get_device_code()
             elif self.params[0] == False:
-                node_cmd.disable.device = self.devc()
+                node_cmd.disable.device = self.get_device_code()
          # ask Mark about .proto format- class structure
         elif self.code == 0x02:
-            node_cmd.set_mode.device = self.devc()
+            node_cmd.set_mode.device = self.get_device_code()
             node_cmd.set_mode.mode = self.set_mode()
         elif self.code == 0x03:
-            node_cmd.set_setpoint.device = self.devc()            
+            node_cmd.set_setpoint.device = self.get_device_code()            
             node_cmd.set_setpoint.mode = self.set_mode()
             node_cmd.set_setpoint.setpoint = self.params[1]
         elif self.code == 0x04:
-            node_cmd.status.device = self.devc()
-            node_cmd.status.mode = self.params[0]
+            node_cmd.status.device = self.get_device_code()
+            node_cmd.status.mode = self.statusenum(self.params[0])
         elif self.code == 0x05:
-            node_cmd.status.device = self.devc()
-            node_cmd.status.mode = 1
+            node_cmd.status.device = self.get_device_code()
+            node_cmd.status.mode = 1#self.statusenum(self.params[0])
         elif self.code == 0x06:
-            node_cmd.configure_settings.device = self.devc()
+            node_cmd.configure_settings.device = self.get_device_code()
             node_cmd.configure_settings.can_id = self.params[0]
         elif self.code == 0x07:
             node_cmd.silence_node.silence = self.params[0]
         elif self.code == 0xFF:
-            node_cmd.reset.device = self.devc()
+            node_cmd.reset.device = self.get_device_code()
         
-        return node_cmd.SerializetoString()
+        return node_cmd.SerializeToString()
 
 
     def packet_construction(self):
         
         
-        packet = [PROTOVER,IDTYPE,IDTYPE,SENDID,self.destnode.addr]
+        packet = [PROTOVER,IDTYPE,IDTYPE]
         plength = packet_size(self.construct)
         packet.insert(0,plength[1])
         packet.insert(0,plength[0])
         packet.insert(0,STARTBYTE)
-        packet.extend(construct)
+        packet.extend(SENDID)
+        packet.extend(self.destnode.addr)
+        packet.extend(self.construct)
         packet.append(checksum_cal(self.destnode.addr,self.construct))
         p = []
         
@@ -298,7 +321,7 @@ class command_t:
         self.destnode = node
         self.construct = self.sConstruct()
         self.length = packet_size(self.construct)
-        self.type = IDTYPE.index('CANID')
+        self.type = IDTYPE
         self.packet = self.packet_construction()
          
 #---------------------------------------------------------------------------------------
@@ -331,7 +354,7 @@ class nodenet:
             else:
                 pass
     
-    print('Node not found. Check your node address')
+        print('Node not found. Check your node address')
 
 
     def nodeonNet(self): #periodically sends network
@@ -479,22 +502,34 @@ class node:
         
         self.closePort()
         
-    def status(self,):
+    def status(self,type):
         '''
         
         Requsts and collects the status from the device.
                 
         '''
-        try:
-            self.net.openPort()
-        finally:
-            status = command_t(self, name = 'status', params = [2])
-            send_command(status)
-            #send_command_str(status)
-            buffer = receive_packet()
-        
+        if type == 'dump':
+            try:
+                self.net.openPort()
+            finally:
+                status = command_t(self, name = 'status', params = [2])
+                send_command(status,self.net.arduino)
+                #send_command_str(status,self.net.arduino)
+                buffer = receive(self.net)
+                #print(buffer)
+                return tfproto.NodeCommand.FromString(buffer[1])
+
+        elif type == 'compact':
+            try:
+                self.net.openPort()
             
-            print(str(buffer))
+            finally:
+                status = command_t(self, name = 'status', params = [1])
+                send_command(status,self.net.arduino)
+                #send_command_str(status,self.net.arduino)
+                buffer = receive(self.net)
+                return tfproto.NodeCommand.FromString(buffer[1])
+
         
     def reset(self, device = "node"):
         '''
@@ -504,7 +539,7 @@ class node:
             self.net.openPort()
         finally:
             reset = command_t(self, name = 'reset', params = [], device = device)
-            send_command(reset)
+            send_command(reset,self.net.arduino)
             #send_command_str(reset)
  
     def setLogmode(self, mode:int):
@@ -529,15 +564,15 @@ class node:
         '''
         cmode = None
         if conmode =="percent":
-            cmode = command_t.modedef.index(0)
-        elif conmode == "amp":
-            cmode = command_t.modedef.index(1)
+            cmode = command_t.modedef.index(conmode)
+        elif conmode == "amps":
+            cmode = command_t.modedef.index(conmode)
         elif conmode == "voltage" :
-            cmode = command_t.modedef.index(2)
+            cmode = command_t.modedef.index("volts")
         elif conmode == "ohms":
-            cmode = command_t.modedef.index(3)
+            cmode = command_t.modedef.index(conmode)
         elif type(conmode) == int:
-            cmode = command_t.modedef[conmode]
+            cmode = conmode
         else:
             print("Error: Incorrect option" )
             return    
@@ -546,14 +581,14 @@ class node:
         muscles = self.muscles
         if device == "all":
             for m in muscles.values():
-                command = command_t(self, SM, device =  f"m{m.idnum+1}", params = [m.cmode])
                 m.cmode = cmode
+                command = command_t(self, SM, device =  f"m{m.idnum+1}", params = [m.cmode])
                 self.command_buff.append(command)
         else:
             for m in muscles.keys():
                 if str(device) == m :
-                    command = command_t(self, SM, device = f"m{muscles[m].idnum+1}", params = [muscles[m].cmode])
                     self.muscles[m].cmode = cmode
+                    command = command_t(self, SM, device = f"m{muscles[m].idnum+1}", params = [muscles[m].cmode])
                     self.command_buff.append(command)
 
                 
@@ -563,7 +598,6 @@ class node:
         muscl = f"m{self.muscles[str(musc)].idnum+1}"     
         cmode = conmode
         command = command_t(self, name = SS, device = muscl, params = [cmode, setpoint])
-        
         self.command_buff.append(command)      
      
     def setMuscle(self, idnum:int, muscle:object): # takes muscle object and idnumber and adds to a dictionary
@@ -648,7 +682,7 @@ class muscle:
          self.resistance = resist
          self.diameter = diam
          self.length = length
-         self.cmode = command_t.modedef["percent"]
+         self.cmode = command_t.modedef.index("percent")
          self.masternode = masternode
       
     def changeMusclemos(self, mosfetnum:int):
@@ -660,32 +694,34 @@ class muscle:
         self.mosfetnum = mosfetnum 
     
     def setMode(self, conmode):
-         '''
+        '''
+
+        Sets the data mode that the muscle will recieve.
+
+        '''
          
-         Sets the data mode that the muscle will recieve.
+        if conmode =="percent":
+            self.cmode = command_t.modedef.index(conmode)
+        elif conmode == "amps":
+            self.cmode = command_t.modedef.index(conmode)
+        elif conmode == "voltage":
+            self.cmode = command_t.modedef.index("volts")
+        elif conmode == "ohms":
+            self.cmode = command_t.modedef.index(conmode)
+        elif conmode == "train":
+            self.cmode = command_t.modedef.index(conmode)
+        else:
+            print("Error: Incorrect option" )
+            return             
          
-         '''
-         
-         if conmode =="percent":
-             self.cmode = command_t.modedef["percent"]
-         elif conmode == "amp":
-             self.cmode = command_t.modedef["amps"]
-         elif conmode == "voltage":
-             self.cmode = command_t.modedef["volts"]
-         elif conmode == "degree":
-             self.cmode = command_t.modedef["degree"]
-         else:
-             print("Error: Incorrect option" )
-             return             
-         
-         muscle = self.idnum
-         self.masternode.setMode(self.cmode, muscle)
+        muscle = self.idnum
+        self.masternode.setMode(self.cmode, muscle)
          
      
     def setSetpoint(self, setpoint:float):   #takes given setpoint and sends relevant information to node
         
                 
-        self.masternode.setSetpoint(self.idnum, self.cmode, setpoint)      
+        self.masternode.setSetpoint(self.idnum, self.cmode, float(setpoint))      
     
     def setEnable(self, bool):
         '''

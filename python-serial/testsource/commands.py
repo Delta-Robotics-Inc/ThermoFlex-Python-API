@@ -112,6 +112,7 @@ def receive(network:object):
         if port.in_waiting > 0:
             i_d += port.read(port.in_waiting)
             # Decode and print received data as characters
+            # print(i_d)
             for b in i_d: 
                 if 126 == b:                    
                     try:
