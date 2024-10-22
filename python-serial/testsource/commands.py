@@ -136,8 +136,12 @@ def receive(network:object):
             # No data, wait a bit before checking again
             t.sleep(0.1)
 
-        if len(msg)>0:
-            break    
+        try:
+            if len(msg)>0:
+                break
+        except UnboundLocalError:
+            pass
+                
     #find packet
     return msg
 #TODO: id address pull from network
@@ -204,7 +208,7 @@ class command_t:
         return device_code           
         
 
-    def set_mode(self) -> None:
+    def set_mode(self) -> tfproto.SMAControlMode:
         
         if self.params[0] =="percent":
             mode = tfproto.SMAControlMode.MODE_PERCENT
@@ -219,6 +223,18 @@ class command_t:
            
         return mode
     
+    def statusenum(self,param) -> tfproto.DeviceStatusMode:
+        x = None
+        if param == 0:
+            x = tfproto.DeviceStatusMode.STATUS_NONE
+        if param == 1:
+            x = tfproto.DeviceStatusMode.STATUS_COMPACT
+        if param == 2:
+            x = tfproto.DeviceStatusMode.STATUS_DUMP
+        if param == 3:
+            x = tfproto.DeviceStatusMode.STATUS_DUMP_READABLE
+        return x
+    
     def sConstruct(self):
         '''
         Constructs the .proto command from command_t object
@@ -226,43 +242,45 @@ class command_t:
         node_cmd = tfproto.NodeCommand()
         if self.code == 0x01:
             if self.params[0] == True:
-                node_cmd.enable.device = self.devc()
+                node_cmd.enable.device = self.get_device_code()
             elif self.params[0] == False:
-                node_cmd.disable.device = self.devc()
+                node_cmd.disable.device = self.get_device_code()
          # ask Mark about .proto format- class structure
         elif self.code == 0x02:
-            node_cmd.set_mode.device = self.devc()
+            node_cmd.set_mode.device = self.get_device_code()
             node_cmd.set_mode.mode = self.set_mode()
         elif self.code == 0x03:
-            node_cmd.set_setpoint.device = self.devc()            
+            node_cmd.set_setpoint.device = self.get_device_code()            
             node_cmd.set_setpoint.mode = self.set_mode()
             node_cmd.set_setpoint.setpoint = self.params[1]
         elif self.code == 0x04:
-            node_cmd.status.device = self.devc()
-            node_cmd.status.mode = self.params[0]
+            node_cmd.status.device = self.get_device_code()
+            node_cmd.status.mode = self.statusenum(self.params[0])
         elif self.code == 0x05:
-            node_cmd.status.device = self.devc()
+            node_cmd.status.device = self.get_device_code()
             node_cmd.status.mode = 1
         elif self.code == 0x06:
-            node_cmd.configure_settings.device = self.devc()
+            node_cmd.configure_settings.device = self.get_device_code()
             node_cmd.configure_settings.can_id = self.params[0]
         elif self.code == 0x07:
             node_cmd.silence_node.silence = self.params[0]
         elif self.code == 0xFF:
-            node_cmd.reset.device = self.devc()
-        
-        return node_cmd.SerializetoString()
+            node_cmd.reset.device = self.get_device_code()
+        print(node_cmd.SerializeToString())
+        return node_cmd.SerializeToString()
 
 
     def packet_construction(self):
         
         
-        packet = [PROTOVER,IDTYPE,IDTYPE,SENDID,self.destnode.addr]
+        packet = [PROTOVER,IDTYPE,IDTYPE]
         plength = packet_size(self.construct)
         packet.insert(0,plength[1])
         packet.insert(0,plength[0])
         packet.insert(0,STARTBYTE)
-        packet.extend(construct)
+        packet.extend(SENDID)
+        packet.extend(self.destnode.addr)
+        packet.extend(self.construct)
         packet.append(checksum_cal(self.destnode.addr,self.construct))
         p = []
         
@@ -298,7 +316,7 @@ class command_t:
         self.destnode = node
         self.construct = self.sConstruct()
         self.length = packet_size(self.construct)
-        self.type = IDTYPE.index('CANID')
+        self.type = IDTYPE
         self.packet = self.packet_construction()
          
 #---------------------------------------------------------------------------------------
@@ -331,7 +349,7 @@ class nodenet:
             else:
                 pass
     
-    print('Node not found. Check your node address')
+        print('Node not found. Check your node address')
 
 
     def nodeonNet(self): #periodically sends network
@@ -479,22 +497,33 @@ class node:
         
         self.closePort()
         
-    def status(self,):
+    def status(self,type):
         '''
         
         Requsts and collects the status from the device.
                 
         '''
-        try:
-            self.net.openPort()
-        finally:
-            status = command_t(self, name = 'status', params = [2])
-            send_command(status)
-            #send_command_str(status)
-            buffer = receive_packet()
-        
+        if type == 'dump':
+            try:
+                self.net.openPort()
+            finally:
+                status = command_t(self, name = 'status', params = [2])
+                #send_command(status,self.net.arduino)
+                send_command_str(status,self.net.arduino)
+                buffer = receive(self.net)
+                return buffer[1].decode('ascii')
+
+        elif type == 'compact':
+            try:
+                self.net.openPort()
             
-            print(str(buffer))
+            finally:
+                status = command_t(self, name = 'status', params = [1])
+                #send_command(status,self.net.arduino)
+                send_command_str(status,self.net.arduino)
+                buffer = receive(self.net)
+                return buffer[1].decode('ascii')
+
         
     def reset(self, device = "node"):
         '''
@@ -504,7 +533,7 @@ class node:
             self.net.openPort()
         finally:
             reset = command_t(self, name = 'reset', params = [], device = device)
-            send_command(reset)
+            send_command(reset,self.net.arduino)
             #send_command_str(reset)
  
     def setLogmode(self, mode:int):
