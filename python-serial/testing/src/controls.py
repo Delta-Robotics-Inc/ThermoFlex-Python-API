@@ -2,7 +2,7 @@
 Comments
 '''
 
-from .commands import *
+from .devices import *
 import threading as thr
 import serial.tools.list_ports as stl
 import pandas as pd
@@ -86,7 +86,7 @@ def discover(proid = prod):
                 nodenetw.openPort()
                 nodenetw.closePort()
                 z+=1
-    return nodenet.netlist
+    return nodenet.netlist()
  
        
 

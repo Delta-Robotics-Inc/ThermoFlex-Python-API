@@ -1,5 +1,5 @@
 
-from .sessions import *
+from .network import *
 
 #my library is the brains of the operation. Everything happens here. 
 #make Markdown file
