@@ -41,6 +41,17 @@ def checksum_cal(dest_id, data):
         checksum ^= byte
     return checksum
 
+def deconstructor(data):
+    read_data = ''
+    
+    if data.HasField('general_response'):
+        read_data += 'general '
+        print('general')
+        if data.general_response.Hasfield('')
+    elif data.HasField('status_response'):
+        read_data += 'status '
+        print('status')
+        
 #---------------------------------------------------------------------------------------
 
 class command_t:

@@ -67,7 +67,7 @@ class session(venv.EnvBuilder):
     def run(self):
         self.running = True
         while self.running == True:
-            self.connode.update()
+            controls.update()
             logTo(self.connode, self.connode.buffer, dt=1)
             for x in self.connode.lastcmd:
                 logTo(self.connode, x, dt=0)    
