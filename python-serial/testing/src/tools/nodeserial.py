@@ -32,18 +32,19 @@ def send_command(command, port):
     '''
     command_final = b''
     for c in command.packet:
-        if type(c) == str:
-            command_final += bytes(c,'ascii')
-        elif type(c) == int:
+        
+        if type(c) == int:
             command_final += st.pack('!B', c)
         elif type(c) == bytes:
             command_final += c
+        elif type(c) == str:
+            command_final += bytes(c,'ascii')
     
     port.write(command_final)
     t.sleep(0.05)      
 
 
-def receive(network:object):
+def receive(network:object): #running check
     '''
     id address from network
     incomoing logging and changes

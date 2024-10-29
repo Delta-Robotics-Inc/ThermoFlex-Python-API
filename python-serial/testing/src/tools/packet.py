@@ -45,12 +45,76 @@ def deconstructor(data):
     read_data = ''
     
     if data.HasField('general_response'):
-        read_data += 'general '
+        read_data += 'general'
         print('general')
-        if data.general_response.Hasfield('')
+        if data.general_response.Hasfield('device'): read_data += f' dev:{data.general_response.device}'
+        if data.general_response.Hasfield('received_cmd'): read_data += f' rec_cmd:{data.general_response.received_cmd}'
+        if data.general_response.Hasfield('response_code'): read_data += f' code:{data.general_response.response_code}'
+        
+            
     elif data.HasField('status_response'):
-        read_data += 'status '
-        print('status')
+        read_data += 'status'
+        print('status')  
+        data = data.status_response()
+        
+        if data.HasField('device'): read_data += f' dev:{data.status_response.device}'
+
+        if data.HasField('node_status_compact'): 
+            #read_data += f' CompactStatus:{data.node_status_compact}'
+            read_data += f' Compact_values uptime:{data.node_status_compact.uptime}'
+            read_data += f' errors:{data.node_status_compact.error_code} volt_supply:{data.node_status_compact.v_supply}'
+            read_data += f' pot_values:{data.node_status_compact.pot_val}' 
+        
+        elif data.HasField('node_status_dump'): 
+            #read_data += f' compact:{data.node_status_dump}'
+            read_data += f' Compact_values uptime:{data.node_status_dump.compact_status.uptime}'
+            read_data += f' errors:{data.node_status_dump.compact_status.error_code}'
+            read_data += f' volt_supply:{data.node_status_dump.compact_status.v_supply}'
+            read_data += f' pot_values:{data.node_status_dump.compact_status.pot_val}' 
+            read_data += f' Settings can_id:{data.node_status_dump.loaded_settings.can_id}.{data.node_status_dump.firmware_subversion}'
+            read_data += f' Dump_values firmware:{data.node_status_dump.firmware_version}'
+            read_data += f' board_ver:{data.node_status_dump.board_version}.{data.node_status_dump.board_subversion}'
+            read_data += f' muscle_count:{data.node_status_dump.muscle_cnt}'
+            read_data += f' log_interval:{data.node_status_dump.log_interval_ms}'
+            read_data += f' vrd_scalar:{data.node_status_dump.vrd_scalar}'
+            read_data += f' vrd_offset:{data.node_status_dump.vrd_offset}'
+            read_data += f' max_current:{data.node_status_dump.max_current}'
+            read_data += f' min_v_supply:{data.node_status_dump.min_v_supply}'
+             
+
+        elif data.HasField('sma_status_compact'): 
+            #read_data += f' Compact:{data.sma_status_compact}'
+            read_data += f' Compact dev:{data.sma_status_compact.device_port}'
+            read_data += f' enable_status:{data.sma_status_compact.enabled}'
+            read_data += f' control_mode:{data.sma_status_compact.mode}'
+            read_data += f' pwm_out:{data.sma_status_compact.output_pwm}'
+            read_data += f' load_amps:{data.sma_status_compact.load_amps}'
+            read_data += f' laod_voltdrop:{data.sma_status_compact.load_vdrop}'
+            read_data += f' load_ohms:{data.sma_status_compact.load_mohms}' 
+        
+        elif data.HasField('sma_status_dump'): 
+            #read_data += f' Dump:{data.sma_status_dump}' 
+            read_data += f' Compact_values dev:{data.sma_status_dump.compact_status.device_port}'
+            read_data += f' enable_status:{data.sma_status_dump.compact_status.enabled}'
+            read_data += f' control_mode:{data.sma_status_dump.compact_status.mode}'
+            read_data += f' pwm_out:{data.sma_status_dump.compact_status.output_pwm}'
+            read_data += f' load_amps:{data.sma_status_dump.compact_status.load_amps}'
+            read_data += f' laod_voltdrop:{data.sma_status_dump.compact_status.load_vdrop}'
+            read_data += f' load_ohms:{data.sma_status_dump.compact_status.load_mohms}' 
+            read_data += f' SMA_Settings default_mode:{data.sma_status_dump.loaded_settings.default_mode}'
+            read_data += f' deafult_setpoint:{data.sma_status_dump.loaded_settings.default_setpoint}'
+            read_data += f' rcontrol_kp:{data.sma_status_dump.loaded_settings.rcntrl_kp}'
+            read_data += f' rcontrol_ki:{data.sma_status_dump.loaded_settings.rcntrl_ki}'
+            read_data += f' rcontrol_kd:{data.sma_status_dump.loaded_settings.rcntrl_kd}'
+            read_data += f' Dump_values vld_scalar:{data.sma_status_dump.vld_scalar}'
+            read_data += f' vld_offset:{data.sma_status_dump.vld_offset}'
+            read_data += f' r_sns_ohms:{data.sma_status_dump.r_sns_ohms}'
+            read_data += f' amp_gain:{data.sma_status_dump.amp_gain}'
+            read_data += f' af_mohms:{data.sma_status_dump.af_mohms}'
+            read_data += f' delta_mohms:{data.sma_status_dump.delta_mohms}'
+            read_data += f' trainstate:{data.sma_status_dump.trainState}'
+    
+    return read_data
         
 #---------------------------------------------------------------------------------------
 
