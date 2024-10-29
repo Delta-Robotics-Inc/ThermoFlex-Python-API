@@ -2,7 +2,8 @@
 Comments
 '''
 
-from .commands import *
+from .devices import *
+from .tools.packet import deconstructor
 import threading as thr
 import serial.tools.list_ports as stl
 import pandas as pd
@@ -86,7 +87,7 @@ def discover(proid = prod):
                 nodenetw.openPort()
                 nodenetw.closePort()
                 z+=1
-    return nodenet.netlist
+    return nodenet.netlist()
  
        
 
@@ -101,14 +102,14 @@ def timer(time):
         t.sleep(1)
 
 
-def update(): #choose which node to update and the delay
+def updatenet(network:object): #choose which node to update and the delay
     '''
     
     Updates all nodes in the list to send commands and receive data
     
     '''
          
-    for node in nodel:
+    for node in network.nodenet():
         node.update()
         if node.logstate['dictlog'] or node.logstate['printlog'] or node.logstate['filelog']or node.logstate['binarylog']== True:
             logTo(node,node.buffer,dt=1)
@@ -157,7 +158,7 @@ def logTo(node:object, logdata, dt:int):
             pass #does nothing statement upon being empty
 
         else:   
-            readlog = logdata.decode("utf-8").strip()
+            readlog = deconstructor(logdata)
             try: 
                 if dt == 1:
                     splitbuff = readlog.split(' ')

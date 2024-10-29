@@ -89,7 +89,7 @@ if(__name__ == '__main__'):
             elif(input() == "node1 status all"):
                 get_node1_status()
             elif(input() == "node2 status all"):
-                get_node2_status()
+                get_node1_status()
             else: 
                 print(f"Python received input: {input_data}")  # Process the input and print the result
         except EOFError:
