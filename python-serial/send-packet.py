@@ -2,7 +2,9 @@ import serial
 import sys
 import time
 
-def construct_packet(destination_id, sender_id=[0xAA, 0xBB, 0xCC], data=b''):
+global ser
+
+def construct_packet(destination_id, sender_id=[0x00, 0x00, 0x00], data=b''):
     """
     Constructs a packet according to the specified packet structure.
     Parameters:
@@ -51,39 +53,17 @@ def construct_packet(destination_id, sender_id=[0xAA, 0xBB, 0xCC], data=b''):
     return rawData
 
 
-def main():
-    '''if len(sys.argv) < 2:
-        print("Usage: python send_and_receive_packets.py <serial_port>")
-        sys.exit(1)
-
-    serial_port = sys.argv[1]'''
-    serial_port = "COM5"
-    baudrate = 115200  # Adjust to match your device's baud rate
-
-    # Open the serial port
-    try:
-        ser = serial.Serial(serial_port, baudrate, timeout=1)
-        print(f"Opened serial port {serial_port} at {baudrate} baud.")
-    except serial.SerialException as e:
-        print(f"Failed to open serial port {serial_port}: {e}")
-        sys.exit(1)
-
-    # Flush any existing input
-    ser.flushInput()
-
+def send_status_123():
+    global ser
     # Construct Packet 1 (addressed to node 0x01 0x02 0x03)
     # [0x3a, 0x04, 0x10, 0x01, 0x20, 0x01]  corresponds to a GetStatusCommand with the following parameters:
     # device = DEVICE_ALL, mode = STATUS_COMPACT, repeating = TRUE
-    # packet1 = construct_packet(destination_id=[0x01, 0x02, 0x03], data = [0x3a, 0x04, 0x10, 0x01, 0x20, 0x01])
+    #packet1 = construct_packet(destination_id=[0x01, 0x02, 0x03], data = [0x3a, 0x04, 0x10, 0x01, 0x20, 0x01])
 
     # [0x3a, 0x02, 0x10, 0x01] corresponds to a GetStatusCommand with the following parameters:
     # device = DEVICE_ALL, mode = STATUS_COMPACT, repeating = FALSE
-    #packet1 = construct_packet(destination_id=[0x01, 0x02, 0x03], data = [0x3a, 0x02, 0x10, 0x01])
-
-
-    # Construct Packet 2 (addressed to a different node 0x04 0x05 0x06)
-    packet2 = construct_packet(destination_id=[0x04, 0x05, 0x06])
-
+    packet1 = construct_packet(destination_id=[0x01, 0x02, 0x03], data = [0x3a, 0x02, 0x10, 0x01])
+    
     # Send Packet 1
     print("\nSending Packet 1:")
     print(' '.join('{:02X}'.format(b) for b in packet1))
@@ -97,6 +77,12 @@ def main():
     print("\nIncoming messages after Packet 1:")
     read_and_print_messages(ser)
 
+
+def send_status_456():
+    global ser
+    # Construct Packet 2 (addressed to a different node 0x04 0x05 0x06)
+    packet2 = construct_packet(destination_id=[0x04, 0x05, 0x06], data = [0x3a, 0x02, 0x10, 0x01])
+
     # Send Packet 2
     print("\nSending Packet 2:")
     print(' '.join('{:02X}'.format(b) for b in packet2))
@@ -109,6 +95,31 @@ def main():
     # Read and print incoming messages
     print("\nIncoming messages after Packet 2:")
     read_and_print_messages(ser)
+
+
+def main():
+    global ser
+    '''if len(sys.argv) < 2:
+        print("Usage: python send_and_receive_packets.py <serial_port>")
+        sys.exit(1)
+
+    serial_port = sys.argv[1]'''
+    serial_port = "COM13"
+    baudrate = 115200  # Adjust to match your device's baud rate
+
+    # Open the serial port
+    try:
+        ser = serial.Serial(serial_port, baudrate, timeout=1)
+        print(f"Opened serial port {serial_port} at {baudrate} baud.")
+    except serial.SerialException as e:
+        print(f"Failed to open serial port {serial_port}: {e}")
+        sys.exit(1)
+
+    # Flush any existing input
+    ser.flushInput()
+
+    send_status_123()
+    send_status_456()
 
     # Close the serial port
     ser.close()
