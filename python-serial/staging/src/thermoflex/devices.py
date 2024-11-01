@@ -4,6 +4,8 @@ Comments
 #TODO: rework serial reading; use read_until, read, threading,in_waiting.
 
 import time as t
+from .tools.packet import command_t
+from .tools.nodeserial import send_command, send_command_str
 
 #arduino commands
 
@@ -41,7 +43,7 @@ class node:
         # TODO use this same philisophy for all variable and method names
         self.muscles = {}
         self.logstate = {'filelog':False, 'dictlog':False, 'printlog':False, 'binarylog':False}
-        self.buffer = None
+        self.status_curr = None
         self.bufflist = []
         self.lastcmnd = None
         
@@ -120,11 +122,12 @@ class node:
                 self.net.openPort()
             finally:
                 status = command_t(self, name = 'status', params = [2])
-                send_command(status,self.net)
+                #send_command(status,self.net)
                 #send_command_str(status,self.net)
-                buffer = receive(self.net)
+                #buffer = receive(self.net)
                 #print(buffer)
-                return tfproto.NodeCommand.FromString(buffer[1])
+                self.net.command_buff.append(status)
+                return self.lastcmnd
 
         elif type == 'compact':
             try:
@@ -132,11 +135,11 @@ class node:
             
             finally:
                 status = command_t(self, name = 'status', params = [1])
-                send_command(status,self.net)
+                #send_command(status,self.net)
                 #send_command_str(status,self.net)
-                buffer = receive(self.net)
-                return tfproto.NodeCommand.FromString(buffer[1])
-
+                #buffer = receive(self.net)
+                self.net.command_buff.append(status)
+                return self.lastcmnd
         
     def reset(self, device = "node"):
         '''
@@ -155,8 +158,11 @@ class node:
         
         Parameters
         ----------
-        bool : TYPE
-       
+        mode 
+            0:none
+            1:compact
+            2:dump
+            3:readable dump     
     
         '''
         self.logmode = mode

@@ -1,18 +1,7 @@
-#create necessary commmands
+from .controls import discover
+#from .network import nodenet
+#from .devices import node, muscle
 
-from .sessions import *
-
-'''
-.py files
-    discover/rediscover
-    session creation
-    session ending
-    session switching
-    node commands/controls
-    node information
-
-protobuffers
-file error handling
-'''
-
-
+#my library is the brains of the operation. Everything happens here. 
+#make Markdown file
+#Getting Started, Markdown with commands, Basic tutorial

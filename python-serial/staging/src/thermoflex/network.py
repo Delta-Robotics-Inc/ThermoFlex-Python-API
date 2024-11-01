@@ -2,9 +2,13 @@ from .tools.nodeserial import serialport, send_command
 from .tools.packet import command_t, deconstructor
 from .devices import node, muscle
 from .sessions import session
+import serial as s
 #TODO: id address pull from network
-def sess():#create session one does not exist
-    return 5
+def sess(net):#create session one does not exist
+    if session.sescount>0:
+        return sessionl[0]
+    else:
+        return session(net)
 class nodenet:
     
     netlist = []
@@ -14,11 +18,11 @@ class nodenet:
         self.port = port
         self.arduino = None
         self.node0 = node(0, self)
-        self.node0.addr = [0x01,0x02,0x03]
+        self.node0.addr = [0x04,0x05,0x06]
         self.nodenet = [] # list of connected nodes
         self.nodenet.append(self.node0)
         self.command_buff = []
-        self.sess = sess()
+        self.sess = sess(self)
         self.openPort()
         serialport(self)
         
@@ -62,6 +66,7 @@ class nodenet:
             except s.SerialException:
                 print('Serial not opened, check port status')
         finally:
+            #print(self.port,self.arduino)
             return self.arduino
                
     def closePort(self):
@@ -82,5 +87,6 @@ class nodenet:
         for node in self.nodenet:
             if node.addr == rec_cmd[0]:
                 node.lastcmd = deconstructor(rec_cmd[1])
-                self.sess.logging(rec_cmd[1],1)
+                #self.sess.logging(rec_cmd[1],1)
                 break
+    

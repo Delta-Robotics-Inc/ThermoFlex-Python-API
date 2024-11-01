@@ -49,7 +49,7 @@ def construct_packet(destination_id, sender_id=[0x00, 0x00, 0x00], data=b''):
         checksum ^= byte
 
     rawData.append(checksum)
-
+    print(rawData)
     return rawData
 
 
@@ -63,7 +63,7 @@ def send_status_123():
     # [0x3a, 0x02, 0x10, 0x01] corresponds to a GetStatusCommand with the following parameters:
     # device = DEVICE_ALL, mode = STATUS_COMPACT, repeating = FALSE
     packet1 = construct_packet(destination_id=[0x01, 0x02, 0x03], data = [0x3a, 0x02, 0x10, 0x01])
-    
+    print(packet1)
     # Send Packet 1
     print("\nSending Packet 1:")
     print(' '.join('{:02X}'.format(b) for b in packet1))
@@ -104,7 +104,7 @@ def main():
         sys.exit(1)
 
     serial_port = sys.argv[1]'''
-    serial_port = "COM13"
+    serial_port = "COM6"
     baudrate = 115200  # Adjust to match your device's baud rate
 
     # Open the serial port

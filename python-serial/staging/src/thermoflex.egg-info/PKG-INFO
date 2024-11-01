@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: thermoflex
-Version: 0.0.2
+Version: 0.0.3
 Summary: This is the repository for the thermoflex muscle by Delta Robotics
 Author-email: Marvin Stephens <marvin.stephens44@yahoo.com>
 Keywords: thermoflex,Delta,Delta Robotics
@@ -8,6 +8,7 @@ Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 License-File: LICENSE.txt
 Requires-Dist: pyserial==3.5
+Requires-Dist: protobuf==5.28.3
 
 # Download and Installation
 
