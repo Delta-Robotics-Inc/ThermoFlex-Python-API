@@ -124,7 +124,12 @@ class node:
                 #send_command_str(status,self.net)
                 buffer = receive(self.net)
                 #print(buffer)
-                return tfproto.NodeCommand.FromString(buffer[1])
+
+                # Only return the first status message and return None if there are no messages
+                if(len(buffer) > 1):
+                    return tfproto.NodeCommand.FromString(buffer[1])
+                else:
+                    return None
 
         elif type == 'compact':
             try:
@@ -135,7 +140,12 @@ class node:
                 send_command(status,self.net)
                 #send_command_str(status,self.net)
                 buffer = receive(self.net)
-                return tfproto.NodeCommand.FromString(buffer[1])
+
+                # Only return the first status message and return None if there are no messages
+                if len(buffer) > 1:
+                    return tfproto.NodeCommand.FromString(buffer[1])
+                else:
+                    return None
 
         
     def reset(self, device = "node"):

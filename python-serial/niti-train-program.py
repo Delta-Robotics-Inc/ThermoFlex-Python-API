@@ -1,10 +1,11 @@
 import thermoflex as tf
 
 
-
-
 nodelist = tf.discover([105]) #input the product id and returns a list of nodes available
-node0 = nodelist[0]
+network = nodelist[0]
+
+node0 = network.nodenet[0] #selects the first node in the network
+
 
 # Example of how to characaterize muscles. 
 muscle1 = tf.muscle(idnum = 0, resist= 300, diam= 2, length= 150)
@@ -14,9 +15,7 @@ node0.setMuscle(0, muscle1) #takes the mosfet number muscle params to muscle
 node0.setMuscle(1, muscle2)
 
 
-node0.status()
-
-
+node0.status('compact')
 
 
 # Set output path and mode (Like Binary vs UTF-8)
