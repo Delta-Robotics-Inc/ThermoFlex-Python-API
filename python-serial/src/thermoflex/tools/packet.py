@@ -192,7 +192,7 @@ class command_t:
         self.length = packet_size(self.construct)
         self.type = IDTYPE
         self.packet = self.packet_construction()
-        #print(tfproto.NodeCommand.FromString(self.construct))
+        
            
     def getName(code:hex):
        for x in command_t.commanddefs:

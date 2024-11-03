@@ -22,7 +22,7 @@ def threaded(func):
 
     return wrapper
 
-def logTo(node:object, logdata, dt:int):
+def logTo(node:object, logdata, dt:int): #TODO: reformat log
     '''
     
     Sends log data to terminal output, directory or file.
@@ -104,7 +104,7 @@ def logTo(node:object, logdata, dt:int):
                             #pandas write to .csv
             
                 elif dt == 1:
-                    readlog = deconstructor(logdata)
+                    readlog = logdata
                     if node.logstate['printlog'] == True:
                         print(str(readlog))
                     if node.logstate['binarylog'] == True:
@@ -156,7 +156,7 @@ class session():
         self.connode.closePort()
     
     def logging(self,cmd,tp): #logs the session
-        print(cmd,tp)
+        #print(cmd,tp)   #DEBUG
         if tp == 0:
             for net in self.networks:
                 for node in net.node_list:

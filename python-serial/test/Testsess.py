@@ -5,6 +5,7 @@ import thermoflex as tf
 
 network = tf.discover([105]) #input the product id and returns a list of nodes available
 node0 = network[0].node0
+network[0].refreshDevices()
 muscle = tf.devices.muscle
 # Example of how to characaterize muscles. 
 muscle1 = muscle(idnum = 0, resist= 300, diam= 2, length= 150)
@@ -14,6 +15,7 @@ node0.setMuscle(0, muscle1) #takes the mosfet number muscle params to muscle
 node0.setMuscle(1, muscle2)
 node0.logstate["printlog"]=True
 #session0 = tf.session(node0)
+#print(node0.logstate)
 node0.status('compact')
 
 

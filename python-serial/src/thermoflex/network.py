@@ -3,6 +3,7 @@ from .tools.packet import command_t, deconstructor
 from .devices import node, muscle
 from .sessions import session
 import serial as s
+import time as t
 #TODO: id address pull from network
 def sess(net):#create session if one does not exist
     if session.sescount>0:
@@ -20,7 +21,7 @@ class nodenet:
         self.broadcast_node = node(0,self)
         self.node0 = node(1, self)
         self.broadcast_node.address = [0xFF,0xFF,0xFF]
-        self.node0.address = [0x04,0x05,0x06]
+        self.node0.address = [0x00,0x00,0x01]
         self.node_list = [] # list of connected nodes
         self.node_list.extend([self.broadcast_node,self.node0])
         self.command_buff = []
@@ -33,8 +34,8 @@ class nodenet:
         Refreshes the network devices by sending a broadcast status command to the network.
         All devices on the network will respond with their status.
         '''
-        self.node_list = [] # Clear the list of connected nodes... should this be done?
-        broadcast_node.status('compact') #broadcasts status to all devices
+        #self.node_list = [] # Clear the list of connected nodes... should this be done?
+        self.broadcast_node.status('compact') #broadcasts status to all devices
         t.sleep(0.5) # Await for responses
         # If blocking, then we know that the device list is updated when the function returns.
     
@@ -43,6 +44,11 @@ class nodenet:
         node.address = addr
         self.node_list.append(node)
     
+    def removeNode(self,addr):
+        for node in self.node_list:
+            if node.address == addr:
+                self.node_list.remove(node)
+
     def getDevice(self,addr):
         
         for x in self.node_list:

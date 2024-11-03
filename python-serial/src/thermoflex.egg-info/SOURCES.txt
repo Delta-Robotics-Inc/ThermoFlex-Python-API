@@ -12,7 +12,6 @@ src/thermoflex.egg-info/dependency_links.txt
 src/thermoflex.egg-info/requires.txt
 src/thermoflex.egg-info/top_level.txt
 src/thermoflex/tools/__init__.py
-src/thermoflex/tools/deconstructor.py
 src/thermoflex/tools/nodeserial.py
 src/thermoflex/tools/packet.py
 src/thermoflex/tools/tfnode_messages_pb2.py

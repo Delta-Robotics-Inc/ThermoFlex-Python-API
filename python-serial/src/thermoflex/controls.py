@@ -93,7 +93,7 @@ def endAll():
         finally:
             del node
 
-def userinput():
+def userinput(): #TODO: add rest of inputs
     usr = input()
     if 'quit' in usr:
         sys.exit()
