@@ -1,7 +1,7 @@
 from . import tfnode_messages_pb2 as tfproto
 STARTBYTE = 0x7E
 PROTOVER = 0x01
-SENDID = [0x01,0x01,0x01]
+SENDID = [0x00,0x00,0x00]
 IDTYPE = 0x00
 CHECKSUM = 0xFF
 PROTOSIZE = 1
@@ -41,6 +41,7 @@ def checksum_cal(dest_id, data):
         checksum ^= byte
     return checksum
 
+
 def packet_parse(inc:str):
     for b in inc: 
         if b == 126:                    
@@ -56,29 +57,32 @@ def packet_parse(inc:str):
                 break
             finally:                                               
                 n = int(n)-10
+                q = []
+                for x in inc[z+6:z+9]:
+                    q.append(x)                   
                 try:
-                    msg = (inc[z+6:z+9],inc[z+12:z+12+n], n+z+13)
+                    msg = (q,inc[z+12:z+12+n], n+z+13)
                 except UnicodeDecodeError:
                     print("[Error decoding data]")
-                
+                #print(msg)   #DEBUG
                 return msg
     return
 
 def deconstructor(data):
     read_data = ''
+    data = tfproto.NodeResponse.FromString(data)
     
     if data.HasField('general_response'):
         read_data += 'general'
-        print('general')
+        #print('general')    #DEBUG
         if data.general_response.Hasfield('device'): read_data += f' dev:{data.general_response.device}'
         if data.general_response.Hasfield('received_cmd'): read_data += f' rec_cmd:{data.general_response.received_cmd}'
         if data.general_response.Hasfield('response_code'): read_data += f' code:{data.general_response.response_code}'
-        
-            
+        #print(read_data)   #DEBUG     
     elif data.HasField('status_response'):
         read_data += 'status'
-        print('status')  
-        data = data.status_response()
+        print('status')   #DEBUG  
+        data = data.status_response
         
         if data.HasField('device'): read_data += f' dev:{data.status_response.device}'
 
@@ -136,7 +140,9 @@ def deconstructor(data):
             read_data += f' af_mohms:{data.sma_status_dump.af_mohms}'
             read_data += f' delta_mohms:{data.sma_status_dump.delta_mohms}'
             read_data += f' trainstate:{data.sma_status_dump.trainState}'
-    
+    else:
+        pass
+    print(read_data)   #DEBUG
     return read_data
         
 #---------------------------------------------------------------------------------------
@@ -186,6 +192,7 @@ class command_t:
         self.length = packet_size(self.construct)
         self.type = IDTYPE
         self.packet = self.packet_construction()
+        #print(tfproto.NodeCommand.FromString(self.construct))
            
     def getName(code:hex):
        for x in command_t.commanddefs:
@@ -207,7 +214,7 @@ class command_t:
                return False
        return True
     
-    def get_device_code(self) -> tfproto.Device:
+    def get_device_code(self): # tfproto.Device
         """
           Returns the device code based on the device code index.
         """
@@ -225,7 +232,7 @@ class command_t:
 
         return device_code           
         
-    def set_mode(self) -> tfproto.SMAControlMode:
+    def set_mode(self):# tfproto.SMAControlMode
         
         if self.params[0] == 0:
             mode = tfproto.SMAControlMode.MODE_PERCENT
@@ -240,15 +247,15 @@ class command_t:
            
         return mode
     
-    def statusenum(self,param) -> tfproto.DeviceStatusMode:
+    def statusenum(self): # tfproto.DeviceStatusMode
         x = None
-        if param == 0:
+        if self.params[0] == 0:
             x = tfproto.DeviceStatusMode.STATUS_NONE
-        if param == 1:
+        elif self.params[0]== 1:
             x = tfproto.DeviceStatusMode.STATUS_COMPACT
-        if param == 2:
+        elif self.params[0] == 2:
             x = tfproto.DeviceStatusMode.STATUS_DUMP
-        if param == 3:
+        elif self.params[0] == 3:
             x = tfproto.DeviceStatusMode.STATUS_DUMP_READABLE
         return x
     
@@ -272,10 +279,12 @@ class command_t:
             node_cmd.set_setpoint.setpoint = self.params[1]
         elif self.code == 0x04:
             node_cmd.status.device = self.get_device_code()
-            node_cmd.status.mode = self.statusenum(self.params[0])
+            node_cmd.status.mode = self.statusenum()
+            node_cmd.status.repeating = False
         elif self.code == 0x05:
             node_cmd.status.device = self.get_device_code()
-            node_cmd.status.mode = 1#self.statusenum(self.params[0])
+            node_cmd.status.mode = self.statusenum()
+            node_cmd.status.repeating = True
         elif self.code == 0x06:
             node_cmd.configure_settings.device = self.get_device_code()
             node_cmd.configure_settings.can_id = self.params[0]
@@ -283,7 +292,7 @@ class command_t:
             node_cmd.silence_node.silence = self.params[0]
         elif self.code == 0xFF:
             node_cmd.reset.device = self.get_device_code()
-        
+        #print(node_cmd.SerializeToString())
         return node_cmd.SerializeToString()
 
     def packet_construction(self):
@@ -300,13 +309,14 @@ class command_t:
         packet.append(checksum_cal(self.destnode.addr,self.construct))
         p = []
         
+        
         #construct packet in bytes
         for x in packet:
             if type(x) == str:
                 p.append(x)
             elif type(x) == int:
                 p.append(x)
-        
+    
         return p
     
     

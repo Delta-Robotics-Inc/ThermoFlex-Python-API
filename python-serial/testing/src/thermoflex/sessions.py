@@ -1,23 +1,19 @@
 '''
 Comments
 '''
-
-from .devices import *
-from .tools.packet import deconstructor
 import threading as thr
-import serial.tools.list_ports as stl
-import pandas as pd
-import time as t
+import multiprocessing as mp
 import os
-
-prt = stl.comports(include_links=False)
-prod = [105] # Product id list
+import shutil as sh
+from .tools.packet import deconstructor
+base_path = os.getcwd().replace("\\","/") + '/ThermoflexSessions'
 sess_filepath = os.getcwd().replace("\\","/") #set base filepath
 
-
+#TODO filepaths of installing scripts
+threadlist = []
 def threaded(func):
     global threadlist
-    threadlist = []
+    
     def wrapper(*args, **kwargs):
         thread = thr.Thread(target=func, args=args, kwargs = kwargs)
         thread.start()
@@ -26,114 +22,6 @@ def threaded(func):
 
     return wrapper
 
-#-----------------------------------------------------------------------------------------------------------
-
-def discover_orig(proid = prod):  
-    '''
-   
-    Takes a list of product id's and returns a list of Node-class objects.
-    
-    Parameters
-    ---------
-    proid : list
-        DESCRIPTION. A list of int values that correspond with the producti id
-   
-    RETURNS
-    ----------
-    nodel: list
-        DESCRIPTION. A list of the node objects with their idnumbers, ports, and product id as identifiers
-    '''
-    
-    node.nodel = []
-    ports = {}
-    
-    
-    z = len(nodel)
-
-    for por in prt:
-        ports[por.serial_number]= por.name    
-        
-    for p in proid:
-        for key in ports.keys():
-            if p == key:
-                nodeob = node(z+1, ports[key])
-                nodeob.serial = key
-                node.nodel.append(nodeob)
-                print(nodel[z].port0)
-                nodel[z].openPort()
-                nodel[z].closePort()
-                z+=1
-    nodecount = len(node.nodel)
-    return node.nodel
-#TODO: put a rediscover in discover, have discover check for existing node serial numbers                         
-def discover(proid = prod): 
-    '''
-    
-    Takes node-object idnumber and tries to find corresponding port.
-    
-    '''
-    
-    ports = {}
-    
-    z = len(nodenet.netlist)
-
-    for por in prt:
-        ports[por.pid]= [por.name, por.serial_number]    
-        
-    for p in proid:
-        for key in ports.keys():
-            if p == key:
-                nodenetw = nodenet(z+1, ports[key][0])
-                nodenetw.openPort()
-                nodenetw.closePort()
-                z+=1
-    return nodenet.netlist()
- 
-       
-
-#------------------------------------------------------------------------------------
-
-@threaded
-def timer(time):
-    global timeleft
-    timeleft = time
-    for x in range(time):
-        timeleft-=1
-        t.sleep(1)
-
-
-def updatenet(network:object): #choose which node to update and the delay
-    '''
-    
-    Updates all nodes in the list to send commands and receive data
-    
-    '''
-         
-    for node in network.nodenet():
-        node.update()
-        if node.logstate['dictlog'] or node.logstate['printlog'] or node.logstate['filelog']or node.logstate['binarylog']== True:
-            logTo(node,node.buffer,dt=1)
-        node.lastcmd.clear()
-        
-def delay(time):
-    
-    timer(time)
-    while timeleft>0:
-        update()
-        
-
-def endAll():
-    '''
-    
-    Closes all node ports. and end all threads.
-    
-    '''
-    
-    for node in nodel:
-        node.net.closePort()
-        del node
-
-@threaded
 def logTo(node:object, logdata, dt:int):
     '''
     
@@ -141,7 +29,7 @@ def logTo(node:object, logdata, dt:int):
     Writes log data to a file.
     
     '''
-    filepath = sess_filepath + f'\logs\node{node.idnum}logdata'
+    filepath = sess_filepath + f'/logs/logdata'
     
     
     
@@ -158,9 +46,10 @@ def logTo(node:object, logdata, dt:int):
             pass #does nothing statement upon being empty
 
         else:   
-            readlog = deconstructor(logdata)
-            try: 
-                if dt == 1:
+            
+            try: #deconstruct and use data to log
+                if dt == 0:
+                    readlog = deconstructor(logdata)
                     splitbuff = readlog.split(' ')
                     splitnode = splitbuff[:splitbuff.index('M1')]
                     splitm1 = splitbuff[splitbuff.index('M1') + 1:splitbuff.index('M2')]
@@ -190,7 +79,7 @@ def logTo(node:object, logdata, dt:int):
                                 node.m2dict[x].append(float(splitm2[m2list.index(x)]))
                                 
                     if node.logstate['binarylog'] == True:
-                        with open('{filepath}\binary\logdata.ses', 'a') as f:
+                        with open('{filepath}/binary/logdata.ses', 'a') as f:
                             f.write(logdata)
                     
                     if node.logstate['filelog'] == True: 
@@ -213,21 +102,18 @@ def logTo(node:object, logdata, dt:int):
                             else:
                                 m2dict2[x] = float(splitm2[m2list.index(x)])
                             #pandas write to .csv
-                            
-                        pd.DataFrame(nodedict2).to_csv(path = filepath + '\node.csv', mode = 'a')
-                        pd.DataFrame(m1dict2).to_csv(path = filepath + '\M1.csv', mode = 'a')
-                        pd.DataFrame(m2dict2).to_csv(path = filepath + '\M2.csv', mode = 'a')
             
-                elif dt == 0:
+                elif dt == 1:
+                    readlog = deconstructor(logdata)
                     if node.logstate['printlog'] == True:
                         print(str(readlog))
                     if node.logstate['binarylog'] == True:
-                        with open(f'{filepath}\binary\logdata.ses', 'a') as f:
+                        with open(f'{filepath}/binary/logdata.ses', 'a') as f:
                             f.write(logdata)
                     if node.logstate['dictlog'] == True:
                         pass
                     if node.logstate['filelog'] == True:
-                        with open(f'{filepath}\sendlog.txt', 'wt') as f:
+                        with open(f'{filepath}/sendlog.txt', 'wt') as f:
                             f.write(readlog)
             except IndexError:
                 pass
@@ -237,6 +123,65 @@ def logTo(node:object, logdata, dt:int):
     finally:
         pass
 
-#----------------------------------------------------------------------------------------------------------------------------
+class session(): 
+    sessionl = []
+    sescount = len(sessionl)    
+    
+    def __init__(self, network,iden = sescount+1): 
+        
+        self.id = iden
+        session.sessionl.append(self)
+        self.networks = []
+        self.networks.append(network)
+        self.environment = None #setup by launch; path dir string
+        self.launch()
+        
+    def launch(self): #opens all files and folders for sessions
+        
+        try:
+            fpath = os.path.exists(f'{base_path}/session{self.id}')
+            if fpath == False:
+                self.setlogpath()
+ 
+        finally:
+            self.environment = f'{base_path}/session{self.id}'
+            os.chdir(self.environment)
+    
+    def end(self): #ends the session
+        
+        sh.copytree(f'{self.environment}/logs' , f'{base_path}/session{self.id}log', dirs_exist_ok = True)
+        os.remove(self.environment)
+        self.connode.closePort()
+    
+    def logging(self,cmd,tp): #logs the session
+        print(cmd,tp)
+        if tp == 0:
+            for net in self.networks:
+                for node in net.node_list:
+                    print(node.addr)
+                    print(cmd[0])
+                    if cmd[0] == node.addr:
+                        print(node,cmd[1],tp)
+                        logTo(node,cmd[1],tp)  
+        elif tp == 1:
+            logTo(cmd.destnode,cmd.construct,tp)
+                
+    def setlogpath(self): #creates logpath
+        
+        BINARYDATA = f'{self.environment}/logs/logdata/binary/logdata.ses'
+        try:
+            os.makedirs(f'{self.environment}/logs/logdata/binary')
+        except FileExistsError:
+            pass
+        finally:
+            with open(BINARYDATA, 'xb') as f:
+                pass         
+            
+def endsession(session:object):
+    session.end()
+    del session
+            
+
 for th in threadlist:
         th.join()
+

@@ -4,6 +4,8 @@ Comments
 #TODO: rework serial reading; use read_until, read, threading,in_waiting.
 
 import time as t
+from .tools.packet import command_t
+from .tools.nodeserial import send_command, send_command_str
 
 #arduino commands
 
@@ -20,28 +22,28 @@ VOLT = "volts"
 DEG =  "degree"
 #proto file definitions
 
-
 #---------------------------------------------------------------------------------------
 
 class node:
     nodel = []
     def __init__(self, idnum, network=None, mosports:int = 2): #network status
         node.nodel.append(self)
-        self.idnum = idnum
+        self.index = idnum
         self.serial = None 
         self.net = network
-        self.addr = None #TODO add in recieve func
+        self.address = None #TODO add in recieve func
+        self.canid = None
         self.arduino = self.net.arduino
-        self.sessid = None
         self.logmode = 0
         self.nodedict = {"A":[],"B":[],"C":[],"D":[]}
         self.m1dict = {"A":[],"B":[],"C":[],"D":[],"E":[],"F":[],"G":[],"H":[],"I":[],"J":[],"K":[],"L":[]}
         self.m2dict = {"A":[],"B":[],"C":[],"D":[],"E":[],"F":[],"G":[],"H":[],"I":[],"J":[],"K":[],"L":[]}
-        self.mosports = mosports  # TODO rename this to be more verbose.  Is it number of ports?
-        # TODO use this same philisophy for all variable and method names
+        self.mosports = mosports  #TODO rename this to be more verbose.  Is it number of ports?
+        #TODO use this same philisophy for all variable and method names
         self.muscles = {}
         self.logstate = {'filelog':False, 'dictlog':False, 'printlog':False, 'binarylog':False}
-        self.buffer = None
+        self.status_curr = None
+        self.latest_resp = None
         self.bufflist = []
         self.lastcmnd = None
         
@@ -51,8 +53,7 @@ class node:
         
         Tests the node and muscle connections. Send format takes integer; 0 for ascii, 1 for string format
 
-        '''       
-        
+        '''          
         
         self.net.openPort()
         mode = command_t.modedef('percent')
@@ -120,34 +121,28 @@ class node:
                 self.net.openPort()
             finally:
                 status = command_t(self, name = 'status', params = [2])
-                send_command(status,self.net)
+                #send_command(status,self.net)
                 #send_command_str(status,self.net)
-                buffer = receive(self.net)
-                #print(buffer)
-
-                # Only return the first status message and return None if there are no messages
-                if(len(buffer) > 1):
-                    return tfproto.NodeCommand.FromString(buffer[1])
-                else:
-                    return None
+                self.net.command_buff.append(status)
+                t.sleep(0.5)
+                
+                return self.status_curr
 
         elif type == 'compact':
             try:
                 self.net.openPort()
-            
             finally:
                 status = command_t(self, name = 'status', params = [1])
-                send_command(status,self.net)
+                #send_command(status,self.net)
                 #send_command_str(status,self.net)
-                buffer = receive(self.net)
+                self.net.command_buff.append(status)
+                t.sleep(0.5)
 
-                # Only return the first status message and return None if there are no messages
-                if len(buffer) > 1:
-                    return tfproto.NodeCommand.FromString(buffer[1])
-                else:
-                    return None
+                return self.status_curr
 
-        
+    def getStatus(self):
+        return self.status_curr
+
     def reset(self, device = "node"):
         '''
         Sends the reset command to the node
@@ -165,14 +160,17 @@ class node:
         
         Parameters
         ----------
-        bool : TYPE
-       
+        mode 
+            0:none
+            1:compact
+            2:dump
+            3:readable dump     
     
         '''
         self.logmode = mode
         command = command_t(self, name = LOGMODE, device = "all", params = [mode])
         self.net.command_buff.append(command)
-        
+
     def setMode(self, conmode, device = 'all'):
         '''
         
@@ -193,7 +191,6 @@ class node:
         else:
             print("Error: Incorrect option" )
             return    
-        
           
         muscles = self.muscles
         if device == "all":
@@ -207,9 +204,7 @@ class node:
                     self.muscles[m].cmode = cmode
                     command = command_t(self, SM, device = f"m{muscles[m].idnum+1}", params = [muscles[m].cmode])
                     self.net.command_buff.append(command)
-
-                
-                
+      
     def setSetpoint(self, musc:int, conmode, setpoint:float):   #takes muscle object idnumber and 
         
         muscl = f"m{self.muscles[str(musc)].idnum+1}"     
@@ -254,8 +249,7 @@ class node:
         
         '''
         self.net.command_buff.append(command_t(self, SE, device = f'm{muscle.idnum+1}', params =  [False]))
-    
-    
+     
     def disableAll(self):
         '''
         
