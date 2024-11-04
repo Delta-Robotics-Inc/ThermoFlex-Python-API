@@ -1,5 +1,5 @@
 from .tools.nodeserial import serialport, send_command
-from .tools.packet import command_t, deconstructor
+from .tools.packet import command_t, deconst_response_packet
 from .devices import node, muscle
 from .sessions import session
 import serial as s
@@ -39,20 +39,22 @@ class nodenet:
         t.sleep(0.5) # Await for responses
         # If blocking, then we know that the device list is updated when the function returns.
     
-    def addNode(self,addr):
-        node = node(len(node.nodel)+1,self)
-        node.address = addr
-        self.node_list.append(node)
+    def addNode(self, node_id):
+        print(f"Adding node: {node_id}")
+        new_node = node(len(node.nodel)+1,self)
+        new_node.node_id = node_id
+        self.node_list.append(new_node)
     
-    def removeNode(self,addr):
+    def removeNode(self, node_id):
+        print(f"Removing node: {node_id}")
         for node in self.node_list:
-            if node.address == addr:
+            if node.node_id == node_id:
                 self.node_list.remove(node)
 
-    def getDevice(self,addr):
+    def getDevice(self, node_id):
         
         for x in self.node_list:
-            if addr == x.address:
+            if node_id == x.node_id:
                 return x
             else:
                 pass
@@ -98,18 +100,23 @@ class nodenet:
         except s.SerialException:
            print('Serial not closed')
            
-    def disperse(self,rec_cmd):
-        response = deconstructor(rec_cmd[1])
+    # Disperse incoming response packets to the appropriate node manager object, based on the sender_id
+    def disperse(self, rec_packet):
+        print("Dispersing packet")
+        response = deconst_response_packet(rec_packet['payload'])
         for node in self.node_list:
-            if node.address == rec_cmd[0]:
+            if node.node_id == rec_packet['sender_id']:
                 if 'status' in  response:
                     node.status_curr = response
                 else:
                     node.latest_resp = response
                 #self.sess.logging(rec_cmd[1],1)
+                print(f"Packet dispersed to existing node with id: {node.node_id}")
                 return
-        try:
-            self.addNode(rec_cmd[0])
-        except:
-            pass
+        # try:
+            print("Packet dispersed to new node")
+            self.addNode(rec_packet['sender_id'])  # Add node if not in list, add based on sender_id
+        # except:
+            # print("Error: Could not add node")
+            # pass
     

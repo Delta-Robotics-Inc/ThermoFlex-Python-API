@@ -5,7 +5,7 @@ import threading as thr
 import multiprocessing as mp
 import os
 import shutil as sh
-from .tools.packet import deconstructor
+from .tools.packet import deconst_response_packet
 base_path = os.getcwd().replace("\\","/") + '/ThermoflexSessions' #set base filepath
 sess_filepath = os.getcwd().replace("\\","/") #new directory filepath
 
@@ -49,7 +49,7 @@ def logTo(node:object, logdata, dt:int): #TODO: reformat log
             
             try: #deconstruct and use data to log
                 if dt == 0:
-                    readlog = deconstructor(logdata)
+                    readlog = deconst_response_packet(logdata)
                     splitbuff = readlog.split(' ')
                     splitnode = splitbuff[:splitbuff.index('M1')]
                     splitm1 = splitbuff[splitbuff.index('M1') + 1:splitbuff.index('M2')]
@@ -160,11 +160,11 @@ class session():
         if tp == 0:
             for net in self.networks:
                 for node in net.node_list:
-                    print(node.address)
-                    print(cmd[0])
-                    if cmd[0] == node.address:
-                        print(node,cmd[1],tp)
-                        logTo(node,cmd[1],tp)  
+                    print(node.node_id)
+                    print(cmd['sender_id'])
+                    if cmd['sender_id'] == node.node_id:
+                        print(node,cmd['payload'],tp)
+                        logTo(node,cmd['payload'],tp)  
         elif tp == 1:
             logTo(cmd.destnode,cmd.construct,tp)
                 

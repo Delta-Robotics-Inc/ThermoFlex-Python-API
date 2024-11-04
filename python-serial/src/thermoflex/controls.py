@@ -3,7 +3,7 @@ Comments
 '''
 from .network import nodenet
 from .devices import node, muscle
-from .tools.packet import deconstructor
+from .tools.packet import deconst_response_packet
 import serial as s
 import threading as thr
 import serial.tools.list_ports as stl
