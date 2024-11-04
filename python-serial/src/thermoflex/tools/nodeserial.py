@@ -3,7 +3,7 @@ import time as t
 import struct as st
 from .packet import packet_parse
 import threading as thr
-i_d = b''
+incoming_data = b''
 
 def threaded(func):
     global threadlist
@@ -51,7 +51,6 @@ def send_command(command, network):
     port.write(bytearray(command.packet))
     t.sleep(0.05)      
 
-
 def receive(network:object): #running check
     '''
     id address from network
@@ -61,12 +60,13 @@ def receive(network:object): #running check
     start_time = t.time()
     timeout = 1  # seconds
     port = network.arduino
-    global i_d
+    global incoming_data
     while True:
         try:
             p_iw = port.in_waiting
             if p_iw > 0:
-                i_d += port.read(p_iw)
+                incoming_data += port.read(p_iw)
+                print(incoming_data) #DEBUG
                 # Decode and print received data as characters
                 
             elif t.time() - start_time > timeout:
@@ -76,19 +76,20 @@ def receive(network:object): #running check
                 # No data, wait a bit before checking again
                 t.sleep(0.1)
             try:
-                msg = packet_parse(i_d)
-                if not msg:
+                node_msg = packet_parse(incoming_data)
+                if not node_msg:
                     continue
                 else:
+                    print(incoming_data) #DEBUG
+                    network.disperse(node_msg)
+                    incoming_data = incoming_data[node_msg[2]:]
                     #print(i_d) #DEBUG
-                    network.disperse(msg)
-                    i_d = i_d[msg[2]:]
-                    #print(i_d) #DEBUG
-                    return msg
+                    return node_msg
             except UnboundLocalError:
+                print("Error: UnboundLocalError")
                 continue
         except AttributeError:
-            #print('port not opened') #DEBUG
+            print('port not opened') #DEBUG
             continue
                
     #TODO: change msg to return full byte string; have network deconstruct packets

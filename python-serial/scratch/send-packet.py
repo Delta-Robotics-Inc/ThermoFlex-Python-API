@@ -104,7 +104,7 @@ def main():
         sys.exit(1)
 
     serial_port = sys.argv[1]'''
-    serial_port = "COM6"
+    serial_port = "COM18"
     baudrate = 115200  # Adjust to match your device's baud rate
 
     # Open the serial port
