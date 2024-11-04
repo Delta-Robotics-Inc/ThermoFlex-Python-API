@@ -20,8 +20,8 @@ class nodenet:
         self.arduino = None
         self.broadcast_node = node(0,self)
         self.node0 = node(1, self)
-        self.broadcast_node.address = [0xFF,0xFF,0xFF]
-        self.node0.address = [0x00,0x00,0x01]
+        self.broadcast_node.node_id = [0xFF,0xFF,0xFF]
+        self.node0.node_id = [0x00,0x00,0x01]
         self.node_list = [] # list of connected nodes
         self.node_list.extend([self.broadcast_node,self.node0])
         self.command_buff = []
