@@ -1,3 +1,4 @@
+import sys
 import serial as s
 import time as t
 import struct as st
@@ -37,9 +38,9 @@ def send_command_str(command, network): #TODO: construct packet in commmand, rem
         elif type(c) == bytes:
             command_final += c
     
-    print(port)
-    print(command.packet)
-    print(command_final)
+    print(f'\nPort: {port}')
+    print(f'Command Packet: {command.packet}')
+    print(f'{command_final}\n')
     
     t.sleep(0.05)
 
@@ -71,46 +72,52 @@ class Receiver:
 
     def receive(self):
         port = self.network.arduino
-        try:
-            while port.in_waiting > 0:
-                byte = port.read(1)
-                byte = byte[0]  # Convert from bytes to integer
+        #try:
+        if port.in_waiting > 0:
+            print(f"\nReading incoming data from network {self.network.idnum}:")
+        while port.in_waiting > 0:
+            byte = port.read(1)
+            byte = byte[0]  # Convert from bytes to integer
 
-                if self.state == ReceptionState.WAIT_FOR_START_BYTE:
-                    if byte == STARTBYTE:
+            if self.state == ReceptionState.WAIT_FOR_START_BYTE:
+                if byte == STARTBYTE:
+                    self.packetData.clear()
+                    self.packetData.append(byte)
+                    self.state = ReceptionState.READ_LENGTH
+                else:
+                    print(chr(byte), end='')
+
+            elif self.state == ReceptionState.READ_LENGTH:
+                self.packetData.append(byte)
+                if len(self.packetData) == 3:  # Start byte + 2 length bytes
+                    length_high = self.packetData[1]
+                    length_low = self.packetData[2]
+                    self.packetLength = (length_high << 8) | length_low
+                    self.state = ReceptionState.READ_PACKET
+
+            elif self.state == ReceptionState.READ_PACKET:
+                self.packetData.append(byte)
+                if len(self.packetData) == 3 + self.packetLength:
+                    # Process the packet using the external parse_packet function
+                    print(f'Parsing Incoming: {self.packetData}')
+                    packet = parse_packet(self.packetData, self.packetLength)
+                    if packet is not None:
+                        # Packet parsed successfully, return it
+                        # Reset state for next packet
+                        self.state = ReceptionState.WAIT_FOR_START_BYTE
                         self.packetData.clear()
-                        self.packetData.append(byte)
-                        self.state = ReceptionState.READ_LENGTH
-
-                elif self.state == ReceptionState.READ_LENGTH:
-                    self.packetData.append(byte)
-                    if len(self.packetData) == 3:  # Start byte + 2 length bytes
-                        length_high = self.packetData[1]
-                        length_low = self.packetData[2]
-                        self.packetLength = (length_high << 8) | length_low
-                        self.state = ReceptionState.READ_PACKET
-
-                elif self.state == ReceptionState.READ_PACKET:
-                    self.packetData.append(byte)
-                    if len(self.packetData) == 3 + self.packetLength:
-                        # Process the packet using the external parse_packet function
-                        print(f'Parsing: {self.packetData}')
-                        packet = parse_packet(self.packetData, self.packetLength)
-                        if packet is not None:
-                            # Packet parsed successfully, return it
-                            # Reset state for next packet
-                            self.state = ReceptionState.WAIT_FOR_START_BYTE
-                            self.packetData.clear()
-                            self.packetLength = 0
-                            return packet
-                        else:
-                            # Parsing failed, reset state
-                            self.state = ReceptionState.WAIT_FOR_START_BYTE
-                            self.packetData.clear()
-                            self.packetLength = 0
-        except AttributeError:
-            print('ERROR: port not opened... quitting receive thread')
-            quit()
+                        self.packetLength = 0
+                        return packet
+                    else:
+                        # Parsing failed, reset state
+                        self.state = ReceptionState.WAIT_FOR_START_BYTE
+                        self.packetData.clear()
+                        self.packetLength = 0
+        #except AttributeError:
+        #    print('ERROR: port not opened...') #TODO quit gracefully after this
+        #    quit()
+            #stop_threads_flag.set()
+            #sys.exit()
         # No packet parsed, return None
         return None
 
@@ -179,16 +186,22 @@ def serial_thread(network):
         
         try:
             cmd = network.command_buff[0]
-        except IndexError:
-            #print('No data') #DEBUG
-            pass
-        else:
+            print("Serial Thread found command on buffer")
             #print(cmd.construct) #DEBUG
             send_command(cmd,network)
             network.sess.logging(cmd,1)
             del network.command_buff[0]
+        except IndexError:
+            #print('No data') #DEBUG
+            pass
+        '''else:
+            #print(cmd.construct) #DEBUG
+            send_command(cmd,network)
+            network.sess.logging(cmd,1)
+            del network.command_buff[0]'''
 
     stop_threads_flag.clear() # Clear the flag to signal that the thread has ended
+
         
 for th in threadlist:
         th.join()

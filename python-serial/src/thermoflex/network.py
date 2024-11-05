@@ -40,12 +40,14 @@ class NodeNet:
         # If blocking, then we know that the device list is updated when the function returns.
     
     def addNode(self, node_id):
+        node_id = [int(x) for x in node_id] # In case node_id is a byte array
         print(f"Adding node: {node_id}")
         new_node = Node(len(Node.nodel)+1,self)
         new_node.node_id = node_id
         self.node_list.append(new_node)
     
     def removeNode(self, node_id):
+        node_id = [int(x) for x in node_id] # In case node_id is a byte array
         print(f"Removing node: {node_id}")
         for node in self.node_list:
             if node.node_id == node_id:
@@ -54,12 +56,13 @@ class NodeNet:
     def getDevice(self, node_id):
         
         for x in self.node_list:
+            print(f"Checking node: {x.node_id} with {node_id}")
             if node_id == x.node_id:
                 return x
             else:
                 pass
     
-        print('Node not found. Check your node address')
+        print(f'Node: {node_id} not found in network: {self.idnum}')
 
     def nodeonNet(self): #periodically sends network
         command_t(self.node0, name = "status", params = [1])

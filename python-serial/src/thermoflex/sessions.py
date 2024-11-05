@@ -160,11 +160,12 @@ class session():
         if tp == 0:
             for net in self.networks:
                 for node in net.node_list:
-                    print(node.node_id)
-                    print(cmd['sender_id'])
+                    # print(f'Attempt to Log Node ID: {node.node_id}')
+                    # print(f"Node ID from Command to Log: {cmd['sender_id']}")
                     if cmd['sender_id'] == node.node_id:
-                        print(node,cmd['payload'],tp)
-                        logTo(node,cmd['payload'],tp)  
+                        print(f"Node: {node}", f"CMD: {cmd['payload']}", f"tp: {tp}")
+                        print("Logging...")
+                        logTo(node, cmd['payload'], tp)
         elif tp == 1:
             logTo(cmd.destnode,cmd.construct,tp)
                 

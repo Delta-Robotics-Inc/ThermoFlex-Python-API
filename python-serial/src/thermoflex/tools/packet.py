@@ -210,7 +210,7 @@ def deconst_response_packet(data):
             read_data += f' trainstate:{data.sma_status_dump.trainState}'
     else:
         pass
-    print(read_data)   #DEBUG
+    print(f"Response Packet Data: [{read_data}]")   #DEBUG
     return read_data
         
 #---------------------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 from .controls import discover, userinput, endAll
+from .devices import Node, muscle
 #from .network import nodenet
 #from .devices import node, muscle
 

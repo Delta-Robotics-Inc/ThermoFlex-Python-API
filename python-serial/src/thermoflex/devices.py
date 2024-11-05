@@ -172,6 +172,7 @@ class Node:
         self.net.command_buff.append(command)
 
     def setMode(self, conmode, device = 'all'):
+        print(f"Setting mode for {device} to {conmode}")
         '''
         
         Sets the data mode that the muscle will recieve. identify muscles by dictionary key.
@@ -204,15 +205,19 @@ class Node:
                     self.muscles[m].cmode = cmode
                     command = command_t(self, SM, device = f"m{muscles[m].idnum+1}", params = [muscles[m].cmode])
                     self.net.command_buff.append(command)
+                    print(f"Node {self.node_id} added command to network buffer {self.net.idnum}")
       
     def setSetpoint(self, musc:int, conmode, setpoint:float):   #takes muscle object idnumber and 
-        
+        print(f"Setting setpoint for {musc} to {setpoint}")
+
         muscl = f"m{self.muscles[str(musc)].idnum+1}"     
         cmode = conmode
         command = command_t(self, name = SS, device = muscl, params = [cmode, setpoint])
-        self.net.command_buff.append(command)      
+        self.net.command_buff.append(command)
+        print(f"Node {self.node_id} added command to network buffer {self.net.idnum}")
      
     def setMuscle(self, idnum:int, muscle:object): # takes muscle object and idnumber and adds to a dictionary
+        print(f"Setting muscle {idnum} to {muscle}")
         '''
         
         Adds the selected muscle to the node and assigns an id number
@@ -224,13 +229,15 @@ class Node:
         muscle.mosfetnum = mvlist.index(muscle)
     
     def enable(self, muscle:object):
+        print(f"Enabling muscle {muscle.idnum}")
         '''
         
         Enables the muscle selected.
         
         '''
         self.net.command_buff.append(command_t(self, SE, device = f'm{muscle.idnum+1}', params = [True]))
- 
+        print(f"Node {self.node_id} added command to network buffer {self.net.idnum}")
+
     def enableAll(self):
         '''
         
@@ -243,13 +250,16 @@ class Node:
             self.net.command_buff.append(command)
      
     def disable(self, muscle:object):
+        print(f"Disabling muscle {muscle.idnum}")
         '''
         
         Disables the muscle selected.
         
         '''
         self.net.command_buff.append(command_t(self, SE, device = f'm{muscle.idnum+1}', params =  [False]))
-     
+        print(f"Node {self.node_id} added command to network buffer {self.net.idnum}")
+
+
     def disableAll(self):
         '''
         
