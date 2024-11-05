@@ -42,26 +42,26 @@ def checksum_cal(dest_id, data):
     return checksum
 
 
-def packet_parse(inc:str):
-    for b in inc: 
+def packet_parse(incoming_data:str):
+    for b in incoming_data: 
         if b == 126:                    
             try:
-                z = inc.index(b)
-                l = inc[z+1:z+3]
+                z = incoming_data.index(b)
+                l = incoming_data[z+1:z+3]
                 n = ''
                 for y in l:
                     n += str(y)
-                if int(n)+3 > len(inc):
+                if int(n)+3 > len(incoming_data):
                     break 
             except IndexError:
                 break
             finally:                                               
                 n = int(n)-10
-                q = []
-                for x in inc[z+6:z+9]:
-                    q.append(x)                   
+                queue = []
+                for x in incoming_data[z+6:z+9]:
+                    queue.append(x)                   
                 try:
-                    msg = (q,inc[z+12:z+12+n], n+z+13)
+                    msg = (queue,incoming_data[z+12:z+12+n], n+z+13)
                 except UnicodeDecodeError:
                     print("[Error decoding data]")
                 #print(msg)   #DEBUG
