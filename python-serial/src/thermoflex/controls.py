@@ -1,8 +1,9 @@
 '''
 Comments
 '''
-from .network import nodenet
-from .devices import node, muscle
+from .network import NodeNet
+from .devices import Node, muscle
+from .tools.nodeserial import stop_threads_flag
 from .tools.packet import deconst_response_packet
 import serial as s
 import threading as thr
@@ -38,7 +39,7 @@ def discover(proid = prod):
     
     ports = {}
     
-    z = len(nodenet.netlist)
+    z = len(NodeNet.netlist)
 
     for por in prt:
         ports[por.pid]= [por.name, por.serial_number]    
@@ -46,11 +47,11 @@ def discover(proid = prod):
     for p in proid:
         for key in ports.keys():
             if p == key:
-                nodenetw = nodenet(z+1, ports[key][0])
+                nodenetw = NodeNet(z+1, ports[key][0])
                 #nodenetw.openPort()
                 #nodenetw.closePort()
                 z+=1
-    return nodenet.netlist
+    return NodeNet.netlist
      
 #------------------------------------------------------------------------------------
 
@@ -84,14 +85,26 @@ def endAll():
     Closes all node ports. and end all threads.
     
     '''
+
+    stop_threads_flag.set() # End all threads by raising this flag
+
+    # Wait for all threads to 
+    # TODO either add more flags for each thread to end or find a way to signal in a different way
+    while(stop_threads_flag.is_set()):
+        pass
+
+    print("All threads have been closed")
     
-    for node in nodel:
+    for node in Node.nodel:
         try:
             node.net.closePort()
         except s.SerialException():
+            print('Warning: Port not open but attempted to close')
             pass
         finally:
             del node
+
+    sys.exit() # End program -> change if program needs to continue
 
 def userinput(): #TODO: add rest of inputs
     usr = input()

@@ -1,4 +1,4 @@
-from .controls import discover,userinput
+from .controls import discover, userinput, endAll
 #from .network import nodenet
 #from .devices import node, muscle
 

@@ -6,6 +6,8 @@ import threading as thr
 from enum import Enum
 #incoming_data = b''
 
+stop_threads_flag = thr.Event() # Flag to stop all threads when the thread is ready to close
+
 def threaded(func):
     global threadlist
     threadlist = []
@@ -79,6 +81,7 @@ class Receiver:
                         self.packetData.clear()
                         self.packetData.append(byte)
                         self.state = ReceptionState.READ_LENGTH
+
                 elif self.state == ReceptionState.READ_LENGTH:
                     self.packetData.append(byte)
                     if len(self.packetData) == 3:  # Start byte + 2 length bytes
@@ -86,6 +89,7 @@ class Receiver:
                         length_low = self.packetData[2]
                         self.packetLength = (length_high << 8) | length_low
                         self.state = ReceptionState.READ_PACKET
+
                 elif self.state == ReceptionState.READ_PACKET:
                     self.packetData.append(byte)
                     if len(self.packetData) == 3 + self.packetLength:
@@ -156,11 +160,15 @@ class Receiver:
 #     #TODO: change msg to return full byte string; have network deconstruct packets
 
 @threaded
-def serialport(network):
+def serial_thread(network):
 
     receiver = Receiver(network)
 
     while True:
+        # Check if the stop_threads_flag has been set, if so, break the loop and end the thread
+        if stop_threads_flag.is_set():
+            break
+
         cmd_rec = receiver.receive()
         #print(cmd_rec) #DEBUG
         if not cmd_rec:
@@ -179,7 +187,8 @@ def serialport(network):
             send_command(cmd,network)
             network.sess.logging(cmd,1)
             del network.command_buff[0]
+
+    stop_threads_flag.clear() # Clear the flag to signal that the thread has ended
         
-    #send nodeonNet check every 1 minute
 for th in threadlist:
         th.join()

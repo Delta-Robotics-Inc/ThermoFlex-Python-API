@@ -1,6 +1,6 @@
-from .tools.nodeserial import serialport, send_command
+from .tools.nodeserial import serial_thread, send_command
 from .tools.packet import command_t, deconst_response_packet
-from .devices import node, muscle
+from .devices import Node, muscle
 from .sessions import session
 import serial as s
 import time as t
@@ -10,16 +10,16 @@ def sess(net):#create session if one does not exist
         return session.sessionl[0]
     else:
         return session(net)
-class nodenet:
+class NodeNet:
     
-    netlist = []
+    netlist = [] # Static list of all nodenet objects
     def __init__(self, idnum, port):
-        nodenet.netlist.append(self)
+        NodeNet.netlist.append(self)
         self.idnum = idnum
         self.port = port
         self.arduino = None
-        self.broadcast_node = node(0,self)
-        self.node0 = node(1, self)
+        self.broadcast_node = Node(0,self)
+        self.node0 = Node(1, self)
         self.broadcast_node.node_id = [0xFF,0xFF,0xFF]
         self.node0.node_id = [0x00,0x00,0x01]
         self.node_list = [] # list of connected nodes
@@ -27,7 +27,7 @@ class nodenet:
         self.command_buff = []
         self.sess = sess(self)
         self.openPort()
-        serialport(self)
+        serial_thread(self)
         
     def refreshDevices(self):
         '''
@@ -35,13 +35,13 @@ class nodenet:
         All devices on the network will respond with their status.
         '''
         #self.node_list = [] # Clear the list of connected nodes... should this be done?
-        self.broadcast_node.status('compact') #broadcasts status to all devices
-        t.sleep(0.5) # Await for responses
+        self.broadcast_node.status('dump') #broadcasts status to all devices
+        t.sleep(0.1) # Await for responses
         # If blocking, then we know that the device list is updated when the function returns.
     
     def addNode(self, node_id):
         print(f"Adding node: {node_id}")
-        new_node = node(len(node.nodel)+1,self)
+        new_node = Node(len(Node.nodel)+1,self)
         new_node.node_id = node_id
         self.node_list.append(new_node)
     

@@ -24,10 +24,10 @@ DEG =  "degree"
 
 #---------------------------------------------------------------------------------------
 
-class node:
+class Node:
     nodel = []
     def __init__(self, idnum, network=None, mosports:int = 2): #network status
-        node.nodel.append(self)
+        Node.nodel.append(self)
         self.index = idnum
         self.serial = None 
         self.net = network
