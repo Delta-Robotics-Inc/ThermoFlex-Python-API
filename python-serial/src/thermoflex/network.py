@@ -113,10 +113,39 @@ class NodeNet:
                 #self.sess.logging(rec_cmd[1],1)
                 print(f"Packet dispersed to existing node with id: {node.node_id}")
                 return
-        # try:
-            print("Packet dispersed to new node")
-            self.addNode(rec_packet['sender_id'])  # Add node if not in list, add based on sender_id
-        # except:
-            # print("Error: Could not add node")
-            # pass
-    
+        # # try:
+        #     print("Packet dispersed to new node")
+        #     self.addNode(rec_packet['sender_id'])  # Add node if not in list, add based on sender_id
+        # # except:
+        #     print("Error: Could not add node")
+        #     pass
+
+        # Try to find an existing node first
+        existing_node = None
+        for node in self.node_list:
+            if node.node_id == rec_packet['sender_id']:
+                existing_node = node
+                break
+        
+        if existing_node:
+            # Handle existing node
+            if 'status' in response:
+                existing_node.status_curr = response
+            else:
+                existing_node.latest_resp = response
+            print(f"Packet dispersed to existing node with id: {rec_packet['sender_id']}")
+        else:
+            # Handle new node
+            try:
+                print("Adding new node to network")
+                self.addNode(rec_packet['sender_id'])
+                # After adding, we should also update its status if this is a status packet
+                new_node = self.getDevice(rec_packet['sender_id'])
+                if new_node:
+                    if 'status' in response:
+                        new_node.status_curr = response
+                    else:
+                        new_node.latest_resp = response
+                print(f"Packet dispersed to new node with id: {rec_packet['sender_id']}")
+            except Exception as e:
+                print(f"Error: Could not add node: {str(e)}")
