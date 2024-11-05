@@ -27,6 +27,7 @@ def packet_size(data:str):
 
     return length
 
+'''
 def checksum_cal(dest_id, data):
     # Calculate checksum
     checksum = 0
@@ -40,51 +41,118 @@ def checksum_cal(dest_id, data):
     for byte in data:
         checksum ^= byte
     return checksum
+    '''
+
+def checksum_cal(protocol_version, sender_id_type, destination_id_type, sender_id, dest_id, data):
+    # Calculate checksum
+    checksum = 0
+    checksum ^= protocol_version
+    checksum ^= sender_id_type
+    checksum ^= destination_id_type
+    for byte in sender_id:
+        checksum ^= byte
+    for byte in dest_id:
+        checksum ^= byte
+    for byte in data:
+        checksum ^= byte
+    return checksum
 
 
-def packet_parse(incoming_data:str):
-    for b in incoming_data: 
-        if b == 126:                    
-            try:
-                z = incoming_data.index(b)
-                l = incoming_data[z+1:z+3]
-                n = ''
-                for y in l:
-                    n += str(y)
-                if int(n)+3 > len(incoming_data):
-                    break 
-            except IndexError:
-                break
-            finally:                                               
-                n = int(n)-10
-                queue = []
-                for x in incoming_data[z+6:z+9]:
-                    queue.append(x)                   
-                try:
-                    msg = (queue,incoming_data[z+12:z+12+n], n+z+13)
-                except UnicodeDecodeError:
-                    print("[Error decoding data]")
-                #print(msg)   #DEBUG
-                return msg
-    return
+def parse_packet(data, packet_length):
+    # data is a bytearray containing the entire packet
+    # Extract fields based on your protocol
+    try:
+        # Validate start byte
+        if data[0] != STARTBYTE:
+            return None
+        # Verify packet length
+        if len(data) != 3 + packet_length:
+            print("Incorrect packet length")
+            return None
+        # Extract protocol version
+        protocol_version = data[3]
+        # Extract sender ID type and destination ID type
+        sender_id_type = data[4]
+        destination_id_type = data[5]
+        # Extract sender ID and destination ID
+        sender_id = data[6:9]
+        destination_id = data[9:12]
+        # Extract data payload
+        payload = data[12:-1]
+        # Extract checksum
+        received_checksum = data[-1]
 
-def deconstructor(data):
+        # Calculate checksum with values
+        calculated_checksum = checksum_cal(
+            protocol_version,
+            sender_id_type,
+            destination_id_type,
+            sender_id,
+            destination_id,
+            payload
+        )
+        if calculated_checksum != received_checksum:
+            print("Checksum mismatch")
+            return None
+        
+        # Create a packet dictionary
+        packet = {
+            'protocol_version': protocol_version,
+            'sender_id_type': sender_id_type,
+            'destination_id_type': destination_id_type,
+            'sender_id': sender_id,
+            'destination_id': destination_id,
+            'payload': payload
+        }
+        return packet
+    except Exception as e:
+        print(f"Error parsing packet: {e}")
+        return None
+
+
+# def packet_parse(inc:str):
+#     for b in inc: 
+#         if b == 126:                    
+#             try:
+#                 z = inc.index(b)
+#                 l = inc[z+1:z+3]
+#                 n = ''
+#                 for y in l:
+#                     n += str(y)
+#                 if int(n)+3 > len(inc):
+#                     break 
+#             except IndexError:
+#                 break
+#             finally:                                               
+#                 n = int(n)-10
+#                 q = []
+#                 for x in inc[z+6:z+9]:
+#                     q.append(x)                   
+#                 try:
+#                     msg = (q,inc[z+12:z+12+n], n+z+13)
+#                 except UnicodeDecodeError:
+#                     print("[Error decoding data]")
+#                 #print(msg)   #DEBUG
+#                 return msg
+#     return
+
+def deconst_response_packet(data):
     read_data = ''
     data = tfproto.NodeResponse.FromString(data)
     
     if data.HasField('general_response'):
         read_data += 'general'
         #print('general')    #DEBUG
-        if data.general_response.Hasfield('device'): read_data += f' dev:{data.general_response.device}'
-        if data.general_response.Hasfield('received_cmd'): read_data += f' rec_cmd:{data.general_response.received_cmd}'
-        if data.general_response.Hasfield('response_code'): read_data += f' code:{data.general_response.response_code}'
+        read_data += f' dev:{data.general_response.device}'
+        read_data += f' rec_cmd:{data.general_response.received_cmd}'
+        read_data += f' code:{data.general_response.response_code}'
         #print(read_data)   #DEBUG     
     elif data.HasField('status_response'):
         read_data += 'status'
         print('status')   #DEBUG  
         data = data.status_response
         
-        if data.HasField('device'): read_data += f' dev:{data.status_response.device}'
+        read_data += f' dev:{data.status_response.device}'
 
         if data.HasField('node_status_compact'): 
             #read_data += f' CompactStatus:{data.node_status_compact}'
@@ -304,9 +372,11 @@ class command_t:
         packet.insert(0,plength[0])
         packet.insert(0,STARTBYTE)
         packet.extend(SENDID)
-        packet.extend(self.destnode.address)
+        packet.extend(self.destnode.node_id)
         packet.extend(self.construct)
-        packet.append(checksum_cal(self.destnode.address,self.construct))
+
+        # Construct packet with constants and node info
+        packet.append(checksum_cal(PROTOVER, IDTYPE, IDTYPE, SENDID, self.destnode.node_id, self.construct))
         p = []
         
         

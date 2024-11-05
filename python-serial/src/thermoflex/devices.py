@@ -31,7 +31,7 @@ class node:
         self.index = idnum
         self.serial = None 
         self.net = network
-        self.address = None #TODO add in recieve func
+        self.node_id = None #TODO add in recieve func
         self.canid = None
         self.arduino = self.net.arduino
         self.logmode = 0
