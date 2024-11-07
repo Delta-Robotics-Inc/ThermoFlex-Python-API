@@ -1,6 +1,40 @@
 '''
 Comments
 '''
+#==============================================================================
+# Debugging functions, set the debug level and debug to console based on level
+# May be moved to a separate file in the future
+#==============================================================================
+
+DEBUG_LEVELS = {
+    'NONE': 0,
+    'ERROR': 1,
+    'WARNING': 2,
+    'INFO': 3,
+    'DEBUG': 4
+}
+
+TF_DEBUG_LEVEL = DEBUG_LEVELS['ERROR']
+
+# Set the debug level
+def set_debug_level(level):
+    global TF_DEBUG_LEVEL
+    TF_DEBUG_LEVEL = DEBUG_LEVELS[level]
+
+# Debug to console based on level
+def debug(level, process_name ,message):
+    if TF_DEBUG_LEVEL >= level:
+        level_name = [key for key, value in DEBUG_LEVELS.items() if value == level][0]
+        print(message) # For now, just print the message.  If you want the level displayed, use the line below
+        #print(f"{message}  | {level_name}: [{process_name}]")
+
+# Debug to console based on level without newline
+def debug_raw(level, message):
+    if TF_DEBUG_LEVEL >= level:
+        print(message, end='')
+
+#==============================================================================
+
 from .network import NodeNet
 from .devices import Node, muscle
 from .tools.nodeserial import stop_threads_flag
@@ -93,13 +127,13 @@ def endAll():
     while(stop_threads_flag.is_set()):
         pass
 
-    print("All threads have been closed")
+    debug(DEBUG_LEVELS['INFO'], "endAll", "All threads have been closed")
     
     for node in Node.nodel:
         try:
             node.net.closePort()
         except s.SerialException():
-            print('Warning: Port not open but attempted to close')
+            debug(DEBUG_LEVELS['WARNING'], "endAll", "Warning: Port not open but attempted to close")
             pass
         finally:
             del node
@@ -110,8 +144,6 @@ def userinput(): #TODO: add rest of inputs
     usr = input()
     if 'quit' in usr:
         sys.exit()
-
-    
 
     
 #----------------------------------------------------------------------------------------------------------------------------

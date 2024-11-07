@@ -1,4 +1,6 @@
 from . import tfnode_messages_pb2 as tfproto
+from ..controls import debug, DEBUG_LEVELS
+
 STARTBYTE = 0x7E
 PROTOVER = 0x01
 SENDID = [0x00,0x00,0x00]
@@ -67,8 +69,9 @@ def parse_packet(data, packet_length):
             return None
         # Verify packet length
         if len(data) != 3 + packet_length:
-            print("Incorrect packet length")
+            debug(DEBUG_LEVELS['INFO'], "parse_packet", "Incorrect packet length, returning")
             return None
+
         # Extract protocol version
         protocol_version = data[3]
         # Extract sender ID type and destination ID type
@@ -92,7 +95,7 @@ def parse_packet(data, packet_length):
             payload
         )
         if calculated_checksum != received_checksum:
-            print("Checksum mismatch")
+            debug(DEBUG_LEVELS['INFO'], "parse_packet", "Checksum mismatch, returning")
             return None
         
         # Create a packet dictionary
@@ -106,7 +109,7 @@ def parse_packet(data, packet_length):
         }
         return packet
     except Exception as e:
-        print(f"Error parsing packet: {e}")
+        debug(DEBUG_LEVELS['ERROR'], "parse_packet", f"Error parsing packet: {e}")
         return None
 
 def deconst_response_packet(data):
@@ -190,8 +193,8 @@ def deconst_response_packet(data):
 
     else:
         pass
-    print(f"Response Type: {read_data}")
-    print(f"Response Packet Data: [{response_dict}]")   #DEBUG
+    debug(DEBUG_LEVELS['DEBUG'], "deconst_response_packet", f"Response Type: {read_data}")
+    debug(DEBUG_LEVELS['DEBUG'], "deconst_response_packet", f"Response Packet Data: {response_dict}")
     return (read_data, response_dict)
         
 #---------------------------------------------------------------------------------------
