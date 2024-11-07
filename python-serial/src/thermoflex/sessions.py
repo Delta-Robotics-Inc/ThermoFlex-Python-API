@@ -21,7 +21,8 @@ def threaded(func):
         return thread
 
     return wrapper
-
+#TODO: logger class; wraps short and long term logging;
+# Pandas rolling buffer of recent data and file logging of current data
 def logTo(node:object, logdata, dt:int): #TODO: reformat log
     '''
     
@@ -31,14 +32,6 @@ def logTo(node:object, logdata, dt:int): #TODO: reformat log
     '''
     filepath = sess_filepath + f'/logs/logdata'
     
-    
-    
-    nodelist = list(node.nodedict.keys())
-    m1list = list(node.m1dict.keys())
-    m2list = list(node.m2dict.keys())
-    nodedict2 = node.nodedict.copy()
-    m1dict2 = node.m1dict.copy()
-    m2dict2 = node.m2dict.copy()
     
     try:
         logdata  # Properly decode and strip the data
@@ -50,33 +43,19 @@ def logTo(node:object, logdata, dt:int): #TODO: reformat log
             try: #deconstruct and use data to log
                 if dt == 0:
                     readlog = deconst_response_packet(logdata)
-                    splitbuff = readlog.split(' ')
-                    splitnode = splitbuff[:splitbuff.index('M1')]
-                    splitm1 = splitbuff[splitbuff.index('M1') + 1:splitbuff.index('M2')]
-                    splitm2 = splitbuff[splitbuff.index('M2') + 1:]
+                    response_type = readlog[0]
+                    response_data = readlog[1]
                 
                     if node.logstate['printlog'] == True:
-                        print(str(readlog))
+                       for res in response_data.keys():
+                           print(f'{res}: {response_data[res]}')
                     
                     if node.logstate['dictlog'] == True: #checks log data         
-                        
-                        for x in nodelist:
-                            if x == 'A' or x == 'C':
-                                node.nodedict[x].append(int(splitnode[nodelist.index(x)]))
-                            elif x == 'B' or x == 'D':
-                                node.nodedict[x].append(float(splitnode[nodelist.index(x)]))
-            
-                        for x in m1list:
-                            if x == 'A' or x == 'B' or x == 'C' or x == 'D' or x == 'L':
-                                node.m1dict[x].append(int(splitm1[m1list.index(x)]))
-                            else:    
-                                node.m1dict[x].append(float(splitm1[m1list.index(x)]))
-            
-                        for x in m2list:
-                            if x == 'A' or x == 'B' or x == 'C' or x == 'D' or x == 'L':
-                                node.m2dict[x].append(int(splitm2[m2list.index(x)]))
-                            else:
-                                node.m2dict[x].append(float(splitm2[m2list.index(x)]))
+                        if response_type == 'general':
+                            pass
+                        elif response_type == 'status':
+                            for value in response_data.keys():
+                                node.data_dict[value].append(response_data[value])
                                 
                     if node.logstate['binarylog'] == True:
                         with open('{filepath}/binary/logdata.ses', 'a') as f:
@@ -140,7 +119,7 @@ class session():
         self.environment = f'{base_path}/session{self.id}'
         try:
             fpath = os.path.exists(self.environment)
-            print(fpath) #DEBUG
+            #print(fpath) #DEBUG
             if fpath == False:
                 
                 self.setlogpath()

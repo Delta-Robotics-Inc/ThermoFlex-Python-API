@@ -1,5 +1,5 @@
 import thermoflex as tf
-
+import time as t
 #write tests that send commands
 
 
@@ -14,8 +14,8 @@ muscle2 = muscle(idnum = 1, resist= 290, diam= 2, length= 145)
 node0.setMuscle(0, muscle1) #takes the mosfet number muscle params to muscle
 node0.setMuscle(1, muscle2)
 node0.logstate["printlog"]=True
-#session0 = tf.session(node0)
 #print(node0.logstate)
+t.sleep(0.1)
 node0.status('compact')
 
 
@@ -35,20 +35,19 @@ m_to_train.setSetpoint(0.1)  # Dial this value in but start low!  Keep in mind t
 
 # Specify training program wait values
 
-'''
+
 wait1 = 30
 wait2 = 10
 
-#session0.run()
+
 # Test Control Script
-#node0.setLogmode(2)  # Set the node to fast logmode
 m_to_train.setEnable(True)
+t.sleep(wait1)
 node0.disableAll() # Disable all at end of program (or disable just m_to_train)
 node0.setLogmode(0)
-#session0.end() # ends the session
-
+tf.endAll()
 
 # This is a new feature, but it would create a plot like I created in my niti-train-program.py based on the data stored to this text file.  You can parse it to create the sensor data arrays and then plot using the exact same method I used in my script
-#tf.plotting(output_path)'''
+#tf.plotting(output_path)
 
-tf.userinput()
+#tf.userinput()

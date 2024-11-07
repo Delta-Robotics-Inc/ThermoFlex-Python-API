@@ -51,7 +51,7 @@ def send_command(command, network):
     
     '''
     port = network.arduino
-    #print('sent')
+    print(f'Sent{command.packet}')
     port.write(bytearray(command.packet))
     t.sleep(0.05)      
 
@@ -113,58 +113,7 @@ class Receiver:
                         self.state = ReceptionState.WAIT_FOR_START_BYTE
                         self.packetData.clear()
                         self.packetLength = 0
-        #except AttributeError:
-        #    print('ERROR: port not opened...') #TODO quit gracefully after this
-        #    quit()
-            #stop_threads_flag.set()
-            #sys.exit()
-        # No packet parsed, return None
         return None
-
-
-# def receive(network:object): #running check
-#     '''
-#     id address from network
-#     incomoing logging and changes
-
-#     '''
-#     start_time = t.time()
-#     timeout = 1  # seconds
-#     port = network.arduino
-#     global incoming_data
-#     while True:
-#         try:
-#             p_iw = port.in_waiting
-#             if p_iw > 0:
-#                 incoming_data += port.read(p_iw)
-#                 print(incoming_data) #DEBUG
-#                 # Decode and print received data as characters
-                
-#             elif t.time() - start_time > timeout:
-#                 # No more data, exit loop after timeout
-#                 break
-#             else:
-#                 # No data, wait a bit before checking again
-#                 t.sleep(0.01)
-#             try:
-#                 node_msg = packet_parse(incoming_data)
-#                 if not node_msg:
-#                     continue
-#                 else:
-#                     print(incoming_data) #DEBUG
-#                     network.disperse(node_msg)
-#                     incoming_data = incoming_data[node_msg[2]:]
-#                     #print(i_d) #DEBUG
-#                     return node_msg
-#             except UnboundLocalError:
-#                 print("Error: UnboundLocalError")
-#                 continue
-#         except AttributeError:
-#             print('ERROR: port not opened... quitting receive thread') #DEBUG
-#             quit()
-#             continue
-               
-#     #TODO: change msg to return full byte string; have network deconstruct packets
 
 @threaded
 def serial_thread(network):

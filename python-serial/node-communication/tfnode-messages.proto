@@ -220,7 +220,7 @@ message NodeStatusDump {
   uint32 board_version = 5;
   uint32 board_subversion = 6;
   uint32 muscle_cnt = 7;
-  uint32 log_interval_ms = 8;
+  uint32 log_interval_ms = 8;   // Dynamic
   float vrd_scalar = 9;
   float vrd_offset = 10;
   float max_current = 11;
@@ -228,10 +228,10 @@ message NodeStatusDump {
 }
 
 // Compact status for SMAController
-message SMAStatusCompact {
-  Device device_port = 1;
-  bool enabled = 2;
-  SMAControlMode mode = 3;
+message SMAStatusCompact {  //All Dynamic
+  Device device_port = 1; 
+  bool enabled = 2; 
+  SMAControlMode mode = 3;  
   float setpoint = 4;
   float output_pwm = 5;
   float load_amps = 6;
@@ -243,14 +243,14 @@ message SMAStatusCompact {
 // Detailed status dump for SMAController (includes most settings and variables within firmware)
 message SMAStatusDump {
   SMAStatusCompact compact_status = 1;
-  SMAControllerSettings loaded_settings = 2;
+  SMAControllerSettings loaded_settings = 2; // Dynamic
 
   // Make sure the following values are not included already in compact status
-  float vld_scalar = 3;
+  float vld_scalar = 3;  // Static Below
   float vld_offset = 4;
   float r_sns_ohms = 5;
   float amp_gain = 6;
-  float af_mohms = 7;
+  float af_mohms = 7;  //Dynamic Below
   float delta_mohms = 8;
   uint32 trainState = 9;
   // TODO Include additional detailed fields

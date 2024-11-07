@@ -31,15 +31,14 @@ class Node:
         self.index = idnum
         self.serial = None 
         self.net = network
-        self.node_id = None #TODO add in recieve func
-        self.canid = None
         self.arduino = self.net.arduino
         self.logmode = 0
-        self.nodedict = {"A":[],"B":[],"C":[],"D":[]}
-        self.m1dict = {"A":[],"B":[],"C":[],"D":[],"E":[],"F":[],"G":[],"H":[],"I":[],"J":[],"K":[],"L":[]}
-        self.m2dict = {"A":[],"B":[],"C":[],"D":[],"E":[],"F":[],"G":[],"H":[],"I":[],"J":[],"K":[],"L":[]}
-        self.mosports = mosports  #TODO rename this to be more verbose.  Is it number of ports?
-        #TODO use this same philisophy for all variable and method names
+        self.node_id = None
+        self.canid = None
+        self.firmware = None
+        self.board_version = None
+        self.node_status = {'uptime':None, 'errors':[],'volt_supply':None,'pot_values':None,'vrd_scalar':None,'vrd_offset':None,'max_current':None,'min_v_supply':None}
+        self.mosports = mosports  #mosfet ports
         self.muscles = {}
         self.logstate = {'filelog':False, 'dictlog':False, 'printlog':False, 'binarylog':False}
         self.status_curr = None
@@ -274,13 +273,15 @@ class Node:
 
 class muscle:
     def __init__(self, idnum:int, resist, diam, length, masternode:object = None):
-         self.idnum = idnum 
-         self.mosfetnum = None
-         self.resistance = resist
-         self.diameter = diam
-         self.length = length
-         self.cmode = command_t.modedef.index("percent")
-         self.masternode = masternode
+        self.idnum = idnum 
+        self.mosfetnum = None
+        self.resistance = resist
+        self.diameter = diam
+        self.length = length
+        self.cmode = command_t.modedef.index("percent")
+        self.masternode = masternode
+        self.SMA_status = {'enable_status':None,'control_mode':None,'pwm_out':None,'load_amps':[],'load_voltdrop':[],'SMA_default_mode':None,'SMA_deafult_setpoint':None,'SMA_rcontrol_kp':None,'SMA_rcontrol_ki':None,'SMA_rcontrol_kd':None, 'vld_scalar':None,'vld_offset':None,'r_sns_ohms':[],'amp_gain':[],'af_mohms':[],'delta_mohms':[]}
+
       
     def changeMusclemos(self, mosfetnum:int):
         '''

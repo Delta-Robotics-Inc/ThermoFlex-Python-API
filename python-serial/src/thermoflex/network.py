@@ -73,8 +73,8 @@ class NodeNet:
         
         Opens a new port with given COM port. Returns serial port.
         
-        '''
-        
+        '''   
+
         try:
             if self.arduino.is_open == True:
                 pass
@@ -107,7 +107,7 @@ class NodeNet:
     def disperse(self, rec_packet):
         print("Dispersing packet")
         response = deconst_response_packet(rec_packet['payload'])
-        for node in self.node_list:
+        for node in self.node_list:# TODO: Disperse packet to node or muscle accordingly
             if node.node_id == rec_packet['sender_id']:
                 if 'status' in  response:
                     node.status_curr = response
@@ -116,14 +116,7 @@ class NodeNet:
                 #self.sess.logging(rec_cmd[1],1)
                 print(f"Packet dispersed to existing node with id: {node.node_id}")
                 return
-        # # try:
-        #     print("Packet dispersed to new node")
-        #     self.addNode(rec_packet['sender_id'])  # Add node if not in list, add based on sender_id
-        # # except:
-        #     print("Error: Could not add node")
-        #     pass
-
-        # Try to find an existing node first
+        
         existing_node = None
         for node in self.node_list:
             if node.node_id == rec_packet['sender_id']:
