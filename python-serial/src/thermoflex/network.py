@@ -1,16 +1,16 @@
 from .tools.nodeserial import serial_thread, send_command
 from .tools.packet import command_t, deconst_response_packet
 from .devices import Node, muscle
-from .sessions import session
-from .controls import debug, DEBUG_LEVELS
+from .sessions import Session
+from .tools.debug import debug, DEBUG_LEVELS
 import serial as s
 import time as t
 #TODO: id address pull from network
 def sess(net):#create session if one does not exist
-    if session.sescount>0:
-        return session.sessionl[0]
+    if Session.sescount>0:
+        return Session.sessionl[0]
     else:
-        return session(net)
+        return Session(net)
 class NodeNet:
     
     netlist = [] # Static list of all nodenet objects

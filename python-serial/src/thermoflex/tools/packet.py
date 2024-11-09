@@ -1,5 +1,6 @@
 from . import tfnode_messages_pb2 as tfproto
-from ..controls import debug, DEBUG_LEVELS
+from .debug import debug, DEBUG_LEVELS
+from enum import Enum
 
 STARTBYTE = 0x7E
 PROTOVER = 0x01
@@ -12,6 +13,13 @@ IDSIZE = 3
 CHECKSUM = 1
 
 # [Start Byte][Packet Length][Protocol Version][Sender ID Type][Destination ID Type][Sender ID][Destination ID][Data][Checksum]
+class DATATYPE(Enum):
+    SENT = 0
+    RECEIVE = 1
+    ERROR = 2
+    WARNING = 3
+    DEBUG = 4
+
 
 def packet_size(data:str):
     '''
@@ -29,22 +37,6 @@ def packet_size(data:str):
 
     return length
 
-'''
-def checksum_cal(dest_id, data):
-    # Calculate checksum
-    checksum = 0
-    checksum ^= PROTOVER
-    checksum ^= IDTYPE
-    checksum ^= IDTYPE
-    for byte in SENDID:
-        checksum ^= byte
-    for byte in dest_id:
-        checksum ^= byte
-    for byte in data:
-        checksum ^= byte
-    return checksum
-    '''
-
 def checksum_cal(protocol_version, sender_id_type, destination_id_type, sender_id, dest_id, data):
     # Calculate checksum
     checksum = 0
@@ -58,7 +50,6 @@ def checksum_cal(protocol_version, sender_id_type, destination_id_type, sender_i
     for byte in data:
         checksum ^= byte
     return checksum
-
 
 def parse_packet(data, packet_length):
     # data is a bytearray containing the entire packet
@@ -244,7 +235,9 @@ class command_t:
         self.length = packet_size(self.construct)
         self.type = IDTYPE
         self.packet = self.packet_construction()
-        
+        #logging fields
+        self.log_msg = Message('SENT',self.construct)
+        self.log_msg.message_location = self.destnode.addr
            
     def getName(code:hex):
        for x in command_t.commanddefs:
@@ -373,5 +366,9 @@ class command_t:
     
         return p
     
+class Message: #object for other message; DEBUG, WARNING, ERROR, RECIEVED
     
-         
+    def __init__(self, msg_type, gen_msg):
+        self.message_type = msg_type
+        self.message_location = None
+        self.generated_message = gen_msg

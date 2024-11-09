@@ -6,7 +6,7 @@ Comments
 import time as t
 from .tools.packet import command_t
 from .tools.nodeserial import send_command, send_command_str
-from .controls import debug, DEBUG_LEVELS
+from .tools.debug import debug
 
 #arduino commands
 
@@ -41,7 +41,7 @@ class Node:
         self.node_status = {'uptime':None, 'errors':[],'volt_supply':None,'pot_values':None,'vrd_scalar':None,'vrd_offset':None,'max_current':None,'min_v_supply':None}
         self.mosports = mosports  #mosfet ports
         self.muscles = {}
-        self.logstate = {'filelog':False, 'dictlog':False, 'printlog':False, 'binarylog':False}
+        self.logstate = {'dictlog':False, 'printlog':False, 'binarylog':False}
         self.status_curr = None
         self.latest_resp = None
         self.bufflist = []

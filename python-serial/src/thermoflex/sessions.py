@@ -2,10 +2,12 @@
 Comments
 '''
 import threading as thr
-import multiprocessing as mp
+from sys import getsizeof as getsize
 import os
 import shutil as sh
-from .tools.packet import deconst_response_packet
+from .tools.packet import deconst_response_packet, DATATYPE
+from .tools.debug import debug
+from .devices import Node
 base_path = os.getcwd().replace("\\","/") + '/ThermoflexSessions' #set base filepath
 sess_filepath = os.getcwd().replace("\\","/") #new directory filepath
 
@@ -23,95 +25,95 @@ def threaded(func):
     return wrapper
 #TODO: logger class; wraps short and long term logging;
 # Pandas rolling buffer of recent data and file logging of current data
-def logTo(node:object, logdata, dt:int): #TODO: reformat log
-    '''
-    
-    Sends log data to terminal output, directory or file.
-    Writes log data to a file.
-    
-    '''
-    filepath = sess_filepath + f'/logs/logdata'
-    
-    
-    try:
-        logdata  # Properly decode and strip the data
-        if not logdata:
-            pass #does nothing statement upon being empty
+class Logger():
+    def __init__(self,session):
+        self.session = session
+        self.location = session.environment
+        self.local = []
 
-        else:   
-            
-            try: #deconstruct and use data to log
-                if dt == 0:
-                    readlog = deconst_response_packet(logdata)
-                    response_type = readlog[0]
-                    response_data = readlog[1]
+    def rollinglog(self, data): #adds data to local rolling buffer 
+        self.local.append(data)
+        if getsize(self.local) > 512000000: #checks data size isnt greater than 512Mb
+            self.local.pop(0)
+
+    def filelog(node:object, logdata, dt:int): #log Format: Time, log type, message
+        '''
+        
+        Sends log data to terminal output, directory or file.
+        Writes log data to a file.
+        
+        '''
+        filepath = sess_filepath + f'/logs/logdata'
+        
+        try:
+            logdata  # Properly decode and strip the data
+            if not logdata:
+                pass #does nothing statement upon being empty
+
+            else:   
                 
-                    if node.logstate['printlog'] == True:
-                       for res in response_data.keys():
-                           print(f'{res}: {response_data[res]}')
+                try: #deconstruct and use data to log
                     
-                    if node.logstate['dictlog'] == True: #checks log data         
-                        if response_type == 'general':
+                    if dt == 0:
+                        readlog = deconst_response_packet(logdata)
+                        response_type = readlog[0]
+                        response_data = readlog[1]
+
+                        if node.logstate['printlog'] == True:
+                            for res in response_data.keys():
+                                print(f'{res}: {response_data[res]}')
+                            
+                        if node.logstate['dictlog'] == True: #checks log data         
+                            if response_type == 'general':
+                                pass
+                            elif response_type == 'status':
+                                for value in response_data.keys():
+                                    node.data_dict[value].append(response_data[value])
+                                    
+                        if node.logstate['binarylog'] == True:
+                            with open('{filepath}/binary/logdata.ses', 'a') as f:
+                                f.write(response_data)
+
+                    elif dt == 1:
+                        readlog = logdata
+                        if node.logstate['printlog'] == True:
+                            print(str(readlog))
+                        if node.logstate['binarylog'] == True:
+                            with open(f'{filepath}/binary/logdata.ses', 'ab') as f:
+                                f.write(logdata)
+                        if node.logstate['dictlog'] == True:
                             pass
-                        elif response_type == 'status':
-                            for value in response_data.keys():
-                                node.data_dict[value].append(response_data[value])
-                                
-                    if node.logstate['binarylog'] == True:
-                        with open('{filepath}/binary/logdata.ses', 'a') as f:
-                            f.write(logdata)
                     
-                    if node.logstate['filelog'] == True: 
-                        
-                        for x in nodelist: 
-                            if x == 'A' or x == 'B' or x == 'C' or x == 'D' or x == 'L':
-                                nodedict2[x] = int(splitnode[nodelist.index(x)])
-                            else:
-                                nodedict2[x] = float(splitnode[nodelist.index(x)])
-                        
-                        for x in m1list:
-                            if x == 'A' or x == 'B' or x == 'C' or x == 'D' or x == 'L':
-                                m1dict2[x] = int(splitm1[m1list.index(x)])
-                            else:
-                                m1dict2[x] = float(splitm1[m1list.index(x)])
-                        
-                        for x in m2list:
-                            if x == 'A' or x == 'B' or x == 'C' or x == 'D' or x == 'L':
-                                m2dict2[x] = int(splitm2[m2list.index(x)])
-                            else:
-                                m2dict2[x] = float(splitm2[m2list.index(x)])
-                            #pandas write to .csv
+                    else:
+                        readlog = logdata
+                    
+                except IndexError:
+                    pass
+                except ValueError:
+                    pass  
+
+        finally:
+            pass
+    
+    def logging(self, message): #takes session log data and sends to log
             
-                elif dt == 1:
-                    readlog = logdata
-                    if node.logstate['printlog'] == True:
-                        print(str(readlog))
-                    if node.logstate['binarylog'] == True:
-                        with open(f'{filepath}/binary/logdata.ses', 'a') as f:
-                            f.write(logdata)
-                    if node.logstate['dictlog'] == True:
-                        pass
-                    if node.logstate['filelog'] == True:
-                        with open(f'{filepath}/sendlog.txt', 'wt') as f:
-                            f.write(readlog)
-            except IndexError:
-                pass
-            except ValueError:
-                pass  
-
-    finally:
-        pass
-
-class session(): 
+        if not message.message_location:
+            self.filelog(message)
+        else:
+            self.filelog(message)
+            self.rollinglog(message)
+    
+class Session(): 
     sessionl = []
     sescount = len(sessionl)    
-    
+    debug_node = Node('DEBUG')
+    debug_node.node_id = 'DEBUG'
     def __init__(self, network,iden = sescount+1): 
-        
         self.id = iden
-        session.sessionl.append(self)
+        Session.sessionl.append(self)
         self.networks = []
         self.networks.append(network)
+        self.logger = Logger(self)
         self.environment = None #setup by launch; path dir string
         self.launch()
         
@@ -134,19 +136,9 @@ class session():
         os.remove(self.environment)
         self.connode.closePort()
     
-    def logging(self,cmd,tp): #logs the session
+    def logging(self,cmd): #logs the session
         #print(cmd,tp)   #DEBUG
-        if tp == 0:
-            for net in self.networks:
-                for node in net.node_list:
-                    # print(f'Attempt to Log Node ID: {node.node_id}')
-                    # print(f"Node ID from Command to Log: {cmd['sender_id']}")
-                    if cmd['sender_id'] == node.node_id:
-                        print(f"Node: {node}", f"CMD: {cmd['payload']}", f"tp: {tp}")
-                        print("Logging...")
-                        logTo(node, cmd['payload'], tp)
-        elif tp == 1:
-            logTo(cmd.destnode,cmd.construct,tp)
+        self.logger.logging(cmd)
                 
     def setlogpath(self): #creates logpath
         

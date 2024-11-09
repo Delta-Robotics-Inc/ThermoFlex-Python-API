@@ -2,8 +2,8 @@ import sys
 import serial as s
 import time as t
 import struct as st
-from .packet import parse_packet, STARTBYTE
-from ..controls import debug, debug_raw, DEBUG_LEVELS
+from .packet import parse_packet, Message,STARTBYTE
+from .debug import debug, debug_raw, DEBUG_LEVELS
 import threading as thr
 from enum import Enum
 #incoming_data = b''
@@ -71,6 +71,7 @@ class Receiver:
         self.packetData = bytearray()
         self.packetLength = 0
         self.network = network
+        self.serial_debug = ''
 
     def receive(self):
         port = self.network.arduino
@@ -87,7 +88,10 @@ class Receiver:
                     self.packetData.clear()
                     self.packetData.append(byte)
                     self.state = ReceptionState.READ_LENGTH
+                    self.network.sess.logging(Message('SERIAL_DEBUG', self.serial_debug)) # sends serial messages to debug
+                    self.serial_debug = ''
                 else:
+                    self.serial_debug += byte
                     debug_raw(DEBUG_LEVELS['DEBUG'], chr(byte))
 
             elif self.state == ReceptionState.READ_LENGTH:
@@ -134,23 +138,18 @@ def serial_thread(network):
             pass
         else:
             network.disperse(cmd_rec)
-            network.sess.logging(cmd_rec,0)
+            network.sess.logging(Message('RECEIVED',cmd_rec['payload']))
         
         try:
             cmd = network.command_buff[0]
             debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Sending command to Network {network.idnum}")
             #print(cmd.construct) #DEBUG
             send_command(cmd,network)
-            network.sess.logging(cmd,1)
+            network.sess.logging(cmd.log_msg)
             del network.command_buff[0]
         except IndexError:
             #print('No data') #DEBUG
             pass
-        '''else:
-            #print(cmd.construct) #DEBUG
-            send_command(cmd,network)
-            network.sess.logging(cmd,1)
-            del network.command_buff[0]'''
 
     stop_threads_flag.clear() # Clear the flag to signal that the thread has ended
 
