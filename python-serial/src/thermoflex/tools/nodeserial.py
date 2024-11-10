@@ -74,21 +74,34 @@ class Receiver:
 
     def receive(self):
         port = self.network.arduino
+        node_debug_str = ""
         #try:
         if port.in_waiting > 0:
             debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"\nReading incoming data from network {self.network.idnum}:")
         while port.in_waiting > 0:
+            
+            # Check if the stop_threads_flag has been set, if so, break the loop and end the thread
+            if stop_threads_flag.is_set():
+                break
+
             byte = port.read(1)
             byte = byte[0]  # Convert from bytes to integer
 
             if self.state == ReceptionState.WAIT_FOR_START_BYTE:
                 if byte == STARTBYTE:
-                    debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Start Byte Found: {byte}")
+                    debug(DEBUG_LEVELS['DEVICE'], "SerialThread", node_debug_str)
+                    node_debug_str = ""
+                    #debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Start Byte Found: {byte}")
                     self.packetData.clear()
                     self.packetData.append(byte)
                     self.state = ReceptionState.READ_LENGTH
                 else:
-                    debug_raw(DEBUG_LEVELS['DEBUG'], chr(byte))
+                    # debug_raw(DEBUG_LEVELS['NONE'], chr(byte))
+                    node_debug_str += chr(byte)
+                    if len(node_debug_str) > 100:
+                        #print(node_debug_str, end="")
+                        debug_raw(DEBUG_LEVELS['DEVICE'], node_debug_str)
+                        node_debug_str = ""
 
             elif self.state == ReceptionState.READ_LENGTH:
                 self.packetData.append(byte)
@@ -124,11 +137,11 @@ def serial_thread(network):
     receiver = Receiver(network)
 
     while True:
+        cmd_rec = receiver.receive()
+
         # Check if the stop_threads_flag has been set, if so, break the loop and end the thread
         if stop_threads_flag.is_set():
             break
-
-        cmd_rec = receiver.receive()
         #print(cmd_rec) #DEBUG
         if not cmd_rec:
             pass

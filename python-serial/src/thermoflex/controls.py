@@ -8,10 +8,11 @@ Comments
 
 DEBUG_LEVELS = {
     'NONE': 0,
-    'ERROR': 1,
-    'WARNING': 2,
-    'INFO': 3,
-    'DEBUG': 4
+    'DEVICE': 1,
+    'ERROR': 2,
+    'WARNING': 3,
+    'INFO': 4,
+    'DEBUG': 5
 }
 
 TF_DEBUG_LEVEL = DEBUG_LEVELS['ERROR']
@@ -119,6 +120,10 @@ def endAll():
     Closes all node ports. and end all threads.
     
     '''
+    # Disable all nodes and give time for the message to be sent
+    for node in Node.nodel:
+        node.disableAll()  # TODO replace with a "endAll" function that sends a message to all nodes to end the current session
+        t.sleep(0.1)
 
     stop_threads_flag.set() # End all threads by raising this flag
 
