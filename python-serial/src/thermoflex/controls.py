@@ -40,7 +40,10 @@ def discover(proid = prod):
                 #nodenetw.openPort()
                 #nodenetw.closePort()
                 z+=1
-    return NodeNet.netlist
+    if z == 0:
+        raise ImportError('There are no connected nodes.')
+    else:
+        return NodeNet.netlist
      
 #------------------------------------------------------------------------------------
 
