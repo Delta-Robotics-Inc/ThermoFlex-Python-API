@@ -64,17 +64,17 @@ def parse_packet(data, packet_length):
             return None
 
         # Extract protocol version
-        protocol_version = data[3]
+        protocol_version = int(data[3])
         # Extract sender ID type and destination ID type
-        sender_id_type = data[4]
-        destination_id_type = data[5]
+        sender_id_type = int(data[4])
+        destination_id_type = int(data[5])
         # Extract sender ID and destination ID
-        sender_id = data[6:9]
-        destination_id = data[9:12]
+        sender_id = list(data[6:9])
+        destination_id = list(data[9:12])
         # Extract data payload
         payload = data[12:-1]
         # Extract checksum
-        received_checksum = data[-1]
+        received_checksum = int(data[-1])
 
         # Calculate checksum with values
         calculated_checksum = checksum_cal(
@@ -107,7 +107,7 @@ def deconst_response_packet(data):
     response_type = ''
     response_dict = {}
     data = tfproto.NodeResponse.FromString(data)
-    
+    #print(data)       #DEBUG
     if data.HasField('general_response'):
         read_data = 'general'
         #print('general')    #DEBUG
@@ -235,9 +235,6 @@ class command_t:
         self.length = packet_size(self.construct)
         self.type = IDTYPE
         self.packet = self.packet_construction()
-        #logging fields
-        self.log_msg = Message('SENT',self.construct)
-        self.log_msg.message_location = self.destnode.addr
            
     def getName(code:hex):
        for x in command_t.commanddefs:
@@ -356,7 +353,6 @@ class command_t:
         packet.append(checksum_cal(PROTOVER, IDTYPE, IDTYPE, SENDID, self.destnode.node_id, self.construct))
         p = []
         
-        
         #construct packet in bytes
         for x in packet:
             if type(x) == str:
@@ -366,9 +362,9 @@ class command_t:
     
         return p
     
-class Message: #object for other message; DEBUG, WARNING, ERROR, RECIEVED
+class LogMessage: #object for other message; DEBUG, WARNING, ERROR, RECIEVED
     
     def __init__(self, msg_type, gen_msg):
         self.message_type = msg_type
-        self.message_location = None
+        self.message_address = SENDID
         self.generated_message = gen_msg

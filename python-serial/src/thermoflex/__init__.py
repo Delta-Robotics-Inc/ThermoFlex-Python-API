@@ -1,4 +1,4 @@
-from .controls import discover, userinput, endAll, set_debug_level
+from .controls import discover, userinput, endAll, updatenet, delay
 from .devices import Node, muscle
 #from .network import nodenet
 #from .devices import node, muscle

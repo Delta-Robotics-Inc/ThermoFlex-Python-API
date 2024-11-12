@@ -2,7 +2,7 @@ import sys
 import serial as s
 import time as t
 import struct as st
-from .packet import parse_packet, Message,STARTBYTE
+from .packet import parse_packet, STARTBYTE
 from .debug import debug, debug_raw, DEBUG_LEVELS
 import threading as thr
 from enum import Enum
@@ -88,10 +88,10 @@ class Receiver:
                     self.packetData.clear()
                     self.packetData.append(byte)
                     self.state = ReceptionState.READ_LENGTH
-                    self.network.sess.logging(Message('SERIAL_DEBUG', self.serial_debug)) # sends serial messages to debug
+                    self.network.sess.logging(self.serial_debug, 2) # sends serial messages to debug
                     self.serial_debug = ''
                 else:
-                    self.serial_debug += byte
+                    self.serial_debug += str(byte)
                     debug_raw(DEBUG_LEVELS['DEBUG'], chr(byte))
 
             elif self.state == ReceptionState.READ_LENGTH:
@@ -138,14 +138,14 @@ def serial_thread(network):
             pass
         else:
             network.disperse(cmd_rec)
-            network.sess.logging(Message('RECEIVED',cmd_rec['payload']))
-        
+            network.sess.logging(cmd_rec,1)
+
         try:
             cmd = network.command_buff[0]
             debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Sending command to Network {network.idnum}")
             #print(cmd.construct) #DEBUG
             send_command(cmd,network)
-            network.sess.logging(cmd.log_msg)
+            network.sess.logging(cmd,0)
             del network.command_buff[0]
         except IndexError:
             #print('No data') #DEBUG

@@ -2,7 +2,7 @@
 
 from .network import NodeNet
 from .devices import Node, muscle
-from .tools.nodeserial import stop_threads_flag
+from .tools.nodeserial import stop_threads_flag, threaded
 from .tools.packet import deconst_response_packet
 from .tools.debug import debug, DEBUG_LEVELS
 import serial as s
@@ -14,17 +14,6 @@ import sys
 
 prt = stl.comports(include_links=False)
 prod = [105] # Product id list
-
-def threaded(func):
-    global threadlist
-    threadlist = []
-    def wrapper(*args, **kwargs):
-        thread = thr.Thread(target=func, args=args, kwargs = kwargs)
-        thread.start()
-        threadlist.append(thread)
-        return thread
-
-    return wrapper
 
 #-----------------------------------------------------------------------------------------------------------
 
@@ -62,6 +51,7 @@ def timer(time):
     for x in range(time):
         timeleft-=1
         t.sleep(1)
+    stop_threads_flag.clear()
 
 
 def updatenet(network:object): #choose which node to update and the delay
@@ -76,7 +66,8 @@ def delay(time):
     
     timer(time)
     while timeleft>0:
-        updatenet()
+        for net in NodeNet.netlist:
+            updatenet(net)
         
 
 def endAll():
@@ -113,5 +104,3 @@ def userinput(): #TODO: add rest of inputs
 
     
 #----------------------------------------------------------------------------------------------------------------------------
-for th in threadlist:
-        th.join()

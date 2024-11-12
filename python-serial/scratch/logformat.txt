@@ -1,0 +1,10 @@
+12/24/2023 12:59:88 SENT [1,2,3] ~commandsent
+12/24/2023 13:00:12 DEBUG [0,0,0] debug_statement. /n becomes |
+12/24/2023 13:00:15 RECEIVED [1,2,3] ~receivedcommand
+12/24/2023 13:00:22 WARNING [0,0,0] Warning statement
+12/24/2023 13:00:52 ERROR [0,0,0] Error statement
+
+The logging format is date, time(24hr), message type, node address, statement message. Like in the example above
+There will also be a binary file in this format as well
+
+

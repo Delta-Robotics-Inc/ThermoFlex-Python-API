@@ -37,7 +37,7 @@ class NodeNet:
         All devices on the network will respond with their status.
         '''
         #self.node_list = [] # Clear the list of connected nodes... should this be done?
-        self.broadcast_node.status('dump') #broadcasts status to all devices
+        self.broadcast_node.status('compact') #broadcasts status to all devices
         t.sleep(0.1) # Await for responses
         # If blocking, then we know that the device list is updated when the function returns.
     
@@ -109,7 +109,7 @@ class NodeNet:
     # Disperse incoming response packets to the appropriate node manager object, based on the sender_id
     def disperse(self, rec_packet):
         debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersing packet: {rec_packet}")
-        packet_node_id = [int(x) for x in rec_packet['sender_id']] # Node ID is stored as a list of integers
+        packet_node_id = rec_packet['sender_id']# Node ID is stored as a list of integers
         response = deconst_response_packet(rec_packet['payload'])
         matching_node = None
 

@@ -1,122 +1,109 @@
 '''
 Comments
 '''
-import threading as thr
 from sys import getsizeof as getsize
 import os
 import shutil as sh
-from .tools.packet import deconst_response_packet, DATATYPE
+import time as t
+from .tools.nodeserial import threaded, stop_threads_flag
+from .tools.packet import deconst_response_packet, DATATYPE, LogMessage
 from .tools.debug import debug
 from .devices import Node
 base_path = os.getcwd().replace("\\","/") + '/ThermoflexSessions' #set base filepath
 sess_filepath = os.getcwd().replace("\\","/") #new directory filepath
 
-#TODO filepaths of installing scripts
-threadlist = []
-def threaded(func):
-    global threadlist
-    
-    def wrapper(*args, **kwargs):
-        thread = thr.Thread(target=func, args=args, kwargs = kwargs)
-        thread.start()
-        threadlist.append(thread)
-        return thread
-
-    return wrapper
 #TODO: logger class; wraps short and long term logging;
 # Pandas rolling buffer of recent data and file logging of current data
-class Logger():
+class Logger:
     def __init__(self,session):
         self.session = session
         self.location = session.environment
         self.local = []
 
-    def rollinglog(self, data): #adds data to local rolling buffer 
+    def rollinglog(self, data:tuple): #adds data to local rolling buffer 
         self.local.append(data)
         if getsize(self.local) > 512000000: #checks data size isnt greater than 512Mb
             self.local.pop(0)
 
-    def filelog(node:object, logdata, dt:int): #log Format: Time, log type, message
+    @threaded
+    def filelog(self,logmsg): #lo/;pgsg Format: Time, log type, message
         '''
         
         Sends log data to terminal output, directory or file.
         Writes log data to a file.
         
         '''
-        filepath = sess_filepath + f'/logs/logdata'
-        
+        filepath = self.location + '/logs/logdata'
+        logtime = t.strftime('%x %X') #time from epoch measure
         try:
-            logdata  # Properly decode and strip the data
-            if not logdata:
+            logmsg  # Properly decode and strip the data
+            if not logmsg:
                 pass #does nothing statement upon being empty
 
             else:   
+
+                try: #checks the data type and returns the log string
                 
-                try: #deconstruct and use data to log
-                    
-                    if dt == 0:
-                        readlog = deconst_response_packet(logdata)
-                        response_type = readlog[0]
-                        response_data = readlog[1]
-
+                    readlog = f'{logtime} {logmsg.message_type} {logmsg.message_address} {logmsg.generated_message}'    
+               
+                    node = None
+                    if not logmsg.message_address == [0x00,0x00,0x00]: # checks for sender id    
+                        for nood in Node.nodel:
+                            if nood.node_id == logmsg.message_address:
+                                node = nood
+                        
+                    if node:
                         if node.logstate['printlog'] == True:
-                            for res in response_data.keys():
-                                print(f'{res}: {response_data[res]}')
-                            
-                        if node.logstate['dictlog'] == True: #checks log data         
-                            if response_type == 'general':
-                                pass
-                            elif response_type == 'status':
-                                for value in response_data.keys():
-                                    node.data_dict[value].append(response_data[value])
-                                    
-                        if node.logstate['binarylog'] == True:
-                            with open('{filepath}/binary/logdata.ses', 'a') as f:
-                                f.write(response_data)
+                            print(readlog)
 
-                    elif dt == 1:
-                        readlog = logdata
-                        if node.logstate['printlog'] == True:
-                            print(str(readlog))
                         if node.logstate['binarylog'] == True:
-                            with open(f'{filepath}/binary/logdata.ses', 'ab') as f:
-                                f.write(logdata)
-                        if node.logstate['dictlog'] == True:
-                            pass
-                    
+                            with open(f'{filepath}/logdata.ses', 'ab') as f:
+                                f.write(bytes(readlog+'\n','ascii'))
+                        
+                        if node.logstate['filelog'] == True:
+                            with open(f'{filepath}/logdata.txt', 'a') as f:
+                                f.write(readlog+'\n')
                     else:
-                        readlog = logdata
-                    
+                        if self.session.logstate['printlog'] == True:
+                            print(readlog)
+
+                        if self.session.logstate['binarylog'] == True:
+                            with open(f'{filepath}/logdata.ses', 'ab') as f:
+                                f.write(bytes(readlog+'\n','ascii'))
+                        
+                        if self.session.logstate['filelog'] == True:
+                            with open(f'{filepath}/logdata.txt', 'a') as f:
+                                f.write(readlog+'\n')
+
                 except IndexError:
                     pass
                 except ValueError:
                     pass  
 
         finally:
-            pass
+            stop_threads_flag.clear()
     
-    def logging(self, message): #takes session log data and sends to log
+    def logging(self, message:LogMessage): #takes session log data and sends to log
             
-        if not message.message_location:
-            self.filelog(message)
-        else:
-            self.filelog(message)
-            self.rollinglog(message)
-    
-class Session(): 
+        self.filelog(message)
+        self.rollinglog((message.message_type, message.generated_message)) #creates a tuple with the log type and message
+
+class Session: 
     sessionl = []
     sescount = len(sessionl)    
-    debug_node = Node('DEBUG')
-    debug_node.node_id = 'DEBUG'
+    # debug_node = Node('DEBUG')
+    # debug_node.node_id = 'DEBUG'
+    
     def __init__(self, network,iden = sescount+1): 
         self.id = iden
         Session.sessionl.append(self)
         self.networks = []
         self.networks.append(network)
-        self.logger = Logger(self)
+        self.logstate = {'binarylog':False, 'printlog':False, 'filelog':False}
         self.environment = None #setup by launch; path dir string
         self.launch()
-        
+        self.logger = Logger(self)
+    
     def launch(self): #opens all files and folders for sessions
         self.environment = f'{base_path}/session{self.id}'
         try:
@@ -136,26 +123,37 @@ class Session():
         os.remove(self.environment)
         self.connode.closePort()
     
-    def logging(self,cmd): #logs the session
+    def logging(self,cmd, logtype:int): #creates the LogMessage object with the available log data
         #print(cmd,tp)   #DEBUG
-        self.logger.logging(cmd)
+        logmsg = None
+        if logtype == 0:
+            logmsg = LogMessage('SENT',cmd.construct)
+            logmsg.message_address =  cmd.destnode.node_id
+        elif logtype == 1:
+            logmsg = LogMessage('RECEIVED', cmd['payload']) # creates log message object
+            logmsg.message_address = cmd['sender_id']
+        elif logtype == 2:
+            logmsg = LogMessage('SERIAL_DEBUG', cmd)
+        else:
+            raise BaseException('Unknown log type')
+        
+        self.logger.logging(logmsg)
+            
                 
     def setlogpath(self): #creates logpath
         
-        BINARYDATA = f'{self.environment}/logs/logdata/binary/logdata.ses'
+        BINARYDATA = f'{self.environment}/logs/logdata/logdata.ses'
+        FILEDATA = f'{self.environment}/logs/logdata/logdata.txt'
         try:
-            os.makedirs(f'{self.environment}/logs/logdata/binary')
+            os.makedirs(f'{self.environment}/logs/logdata')
         except FileExistsError:
             pass
         finally:
             with open(BINARYDATA, 'xb') as f:
                 pass         
+            with open(FILEDATA, 'xt') as f:
+                pass
             
 def endsession(session:object):
     session.end()
     del session
-            
-
-for th in threadlist:
-        th.join()
-
