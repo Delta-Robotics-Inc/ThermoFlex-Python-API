@@ -3,12 +3,9 @@
 from .network import NodeNet
 from .devices import Node, muscle
 from .tools.nodeserial import stop_threads_flag, threaded
-from .tools.packet import deconst_response_packet
-from .tools.debug import debug, DEBUG_LEVELS
+from .tools.debug import Debugger as D, DEBUG_LEVELS
 import serial as s
-import threading as thr
 import serial.tools.list_ports as stl
-import pandas as pd
 import time as t
 import sys
 
@@ -87,13 +84,13 @@ def endAll():
     while(stop_threads_flag.is_set()):
         pass
 
-    debug(DEBUG_LEVELS['INFO'], "endAll", "All threads have been closed")
+    D.debug(DEBUG_LEVELS['INFO'], "endAll", "All threads have been closed")
     
     for node in Node.nodel:
         try:
             node.net.closePort()
         except s.SerialException():
-            debug(DEBUG_LEVELS['WARNING'], "endAll", "Warning: Port not open but attempted to close")
+            D.debug(DEBUG_LEVELS['WARNING'], "endAll", "Warning: Port not open but attempted to close")
             pass
         finally:
             del node

@@ -1,6 +1,6 @@
 
-a = b'\x04\x05\x06'
-b = []
-for s in a:
-    b.append(s)
-print(b)
+a = {'b':'45', 'c': 44, 'x': 15.25}
+d = '45.25'
+e = 70
+  #.replace('}','')
+print(f'{d} {e} {str(a).replace(,'')}')

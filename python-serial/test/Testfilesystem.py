@@ -8,9 +8,12 @@ net1 = networks[0]
 
 net1.refreshDevices()
 t.sleep(2)
+
 #for x in net1.node_list: print(x.node_id)
 node1 = net1.getDevice(net1.node_list[2].node_id)
-
+tf.Debugger.DEBUG_PRINT = False
+#tf.Debugger.DEBUG_LOG = True
+tf.Debugger.set_debug_level('DEBUG')
 # Get node 1 from node net by id
 muscle = tf.devices.muscle
 
@@ -24,7 +27,7 @@ node1.logstate['binarylog'] = True
 net1.sess.logstate['binarylog'] = True
 net1.sess.logstate['filelog'] = True
 # Print status dump
-#print(node1.status("dump"))
+print(node1.status("dump"))
 
 
 #run nodes

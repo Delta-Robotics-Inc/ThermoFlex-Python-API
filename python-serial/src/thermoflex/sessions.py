@@ -7,7 +7,7 @@ import shutil as sh
 import time as t
 from .tools.nodeserial import threaded, stop_threads_flag
 from .tools.packet import deconst_response_packet, DATATYPE, LogMessage
-from .tools.debug import debug
+from .tools.debug import Debugger as D, DEBUG_LEVELS
 from .devices import Node
 base_path = os.getcwd().replace("\\","/") + '/ThermoflexSessions' #set base filepath
 sess_filepath = os.getcwd().replace("\\","/") #new directory filepath
@@ -103,6 +103,7 @@ class Session:
         self.environment = None #setup by launch; path dir string
         self.launch()
         self.logger = Logger(self)
+        D.DEBUG_SESSION = self
     
     def launch(self): #opens all files and folders for sessions
         self.environment = f'{base_path}/session{self.id}'
@@ -134,6 +135,8 @@ class Session:
             logmsg.message_address = cmd['sender_id']
         elif logtype == 2:
             logmsg = LogMessage('SERIAL_DEBUG', cmd)
+        elif logtype == 3:
+            logmsg = LogMessage(cmd[0],cmd[1]) #for DEBUG LOGGING
         else:
             raise BaseException('Unknown log type')
         

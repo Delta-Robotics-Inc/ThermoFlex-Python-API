@@ -1,5 +1,5 @@
 from . import tfnode_messages_pb2 as tfproto
-from .debug import debug, DEBUG_LEVELS
+from .debug import Debugger as D, DEBUG_LEVELS
 from enum import Enum
 
 STARTBYTE = 0x7E
@@ -60,7 +60,7 @@ def parse_packet(data, packet_length):
             return None
         # Verify packet length
         if len(data) != 3 + packet_length:
-            debug(DEBUG_LEVELS['INFO'], "parse_packet", "Incorrect packet length, returning")
+            D.debug(DEBUG_LEVELS['INFO'], "parse_packet", "Incorrect packet length, returning")
             return None
 
         # Extract protocol version
@@ -86,7 +86,7 @@ def parse_packet(data, packet_length):
             payload
         )
         if calculated_checksum != received_checksum:
-            debug(DEBUG_LEVELS['INFO'], "parse_packet", "Checksum mismatch, returning")
+            D.debug(DEBUG_LEVELS['INFO'], "parse_packet", "Checksum mismatch, returning")
             return None
         
         # Create a packet dictionary
@@ -100,7 +100,7 @@ def parse_packet(data, packet_length):
         }
         return packet
     except Exception as e:
-        debug(DEBUG_LEVELS['ERROR'], "parse_packet", f"Error parsing packet: {e}")
+        D.debug(DEBUG_LEVELS['ERROR'], "parse_packet", f"Error parsing packet: {e}")
         return None
 
 def deconst_response_packet(data):
@@ -137,8 +137,8 @@ def deconst_response_packet(data):
             response_dict['errors'] = data.node_status_dump.compact_status.error_code
             response_dict['volt_supply'] = data.node_status_dump.compact_status.v_supply
             response_dict['pot_values'] = data.node_status_dump.compact_status.pot_val 
-            response_dict['can_id'] = f'{data.node_status_dump.loaded_settings.can_id}.{data.node_status_dump.firmware_subversion}'
-            response_dict['firmware'] = data.node_status_dump.firmware_version
+            response_dict['can_id'] = f'{data.node_status_dump.loaded_settings.can_id}'
+            response_dict['firmware'] = f'{data.node_status_dump.firmware_version}.{data.node_status_dump.firmware_subversion}'
             response_dict['board_ver'] = f'{data.node_status_dump.board_version}.{data.node_status_dump.board_subversion}'
             response_dict['muscle_count'] = data.node_status_dump.muscle_cnt
             response_dict['log_interval'] = data.node_status_dump.log_interval_ms
@@ -184,8 +184,8 @@ def deconst_response_packet(data):
 
     else:
         pass
-    debug(DEBUG_LEVELS['DEBUG'], "deconst_response_packet", f"Response Type: {read_data}")
-    debug(DEBUG_LEVELS['DEBUG'], "deconst_response_packet", f"Response Packet Data: {response_dict}")
+    D.debug(DEBUG_LEVELS['DEBUG'], "deconst_response_packet", f"Response Type: {read_data}")
+    D.debug(DEBUG_LEVELS['DEBUG'], "deconst_response_packet", f"Response Packet Data: {response_dict}")
     return (read_data, response_dict)
         
 #---------------------------------------------------------------------------------------
@@ -208,7 +208,7 @@ class command_t:
 			       } 
     devicedef = ("all", "node","portall", "m1", "m2")
 	
-    modedef = ("percent" , "amps", "volts", "ohms", "train")
+    modedef = ("percent" , "amps", "volts", "ohms", "train", "count")
     
     def __init__(self, node:object, name:str, params:list, device = 'node' ):
     	#valid command checking
@@ -361,10 +361,11 @@ class command_t:
                 p.append(x)
     
         return p
-    
-class LogMessage: #object for other message; DEBUG, WARNING, ERROR, RECIEVED
+#-----------------------------------------------------------------------------------------
+class LogMessage: #object for log messages
     
     def __init__(self, msg_type, gen_msg):
         self.message_type = msg_type
-        self.message_address = SENDID
+        self.message_address = [0x00,0x00,0x00]
         self.generated_message = gen_msg
+        

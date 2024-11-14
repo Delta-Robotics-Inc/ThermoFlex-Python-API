@@ -2,7 +2,7 @@ from .tools.nodeserial import serial_thread, send_command
 from .tools.packet import command_t, deconst_response_packet
 from .devices import Node, muscle
 from .sessions import Session
-from .tools.debug import debug, DEBUG_LEVELS
+from .tools.debug import Debugger as D, DEBUG_LEVELS
 import serial as s
 import time as t
 #TODO: id address pull from network
@@ -43,7 +43,7 @@ class NodeNet:
     
     def addNode(self, node_id):
         node_id = [int(x) for x in node_id] # In case node_id is a byte array
-        debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Adding node: {node_id}")
+        D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Adding node: {node_id}")
         new_node = Node(len(Node.nodel)+1,self)
         new_node.node_id = node_id
         self.node_list.append(new_node)
@@ -51,7 +51,7 @@ class NodeNet:
     
     def removeNode(self, node_id):
         node_id = [int(x) for x in node_id] # In case node_id is a byte array
-        debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Removing node: {node_id}")
+        D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Removing node: {node_id}")
         for node in self.node_list:
             if node.node_id == node_id:
                 self.node_list.remove(node)
@@ -59,13 +59,13 @@ class NodeNet:
     def getDevice(self, node_id):
         
         for x in self.node_list:
-            debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Checking node: {x.node_id} with {node_id}")
+            D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Checking node: {x.node_id} with {node_id}")
             if node_id == x.node_id:
                 return x
             else:
                 pass
     
-        debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Node: {node_id} not found in {self.debug_name}")
+        D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Node: {node_id} not found in {self.debug_name}")
 
     def nodeonNet(self): #periodically sends network
         command_t(self.node0, name = "status", params = [1])
@@ -89,7 +89,7 @@ class NodeNet:
                 self.arduino = s.Serial(port = self.port , baudrate=115200, timeout=1)
                 
             except s.SerialException:
-                debug(DEBUG_LEVELS['ERROR'], self.debug_name, "Error: Serial not opened, check port status")
+                D.debug(DEBUG_LEVELS['ERROR'], self.debug_name, "Error: Serial not opened, check port status")
         finally:
             #print(self.port,self.arduino)
             return self.arduino
@@ -104,11 +104,11 @@ class NodeNet:
             self.arduino.close()
     
         except s.SerialException:
-           debug(DEBUG_LEVELS['ERROR'], self.debug_name, "Error: Serial not closed")
+           D.debug(DEBUG_LEVELS['ERROR'], self.debug_name, "Error: Serial not closed")
            
     # Disperse incoming response packets to the appropriate node manager object, based on the sender_id
     def disperse(self, rec_packet):
-        debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersing packet: {rec_packet}")
+        D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersing packet: {rec_packet}")
         packet_node_id = rec_packet['sender_id']# Node ID is stored as a list of integers
         response = deconst_response_packet(rec_packet['payload'])
         matching_node = None
@@ -117,18 +117,18 @@ class NodeNet:
         for node in self.node_list:# TODO: Disperse packet to node or muscle accordingly
             if node.node_id == packet_node_id:
                 matching_node = node
-                debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to existing node with id: {node.node_id}")
+                D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to existing node with id: {node.node_id}")
                 return
             
         # If the node does not exist in the network, add it
         if(matching_node == None):  
             matching_node = self.addNode(packet_node_id)
-            debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to new node with id: {packet_node_id}")
+            D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to new node with id: {packet_node_id}")
 
         # Disperse the response to the node
-        if 'status' in response:
-            matching_node.status_curr = response
+        if 'status' in response[0]:
+            matching_node.updateStatus(response)
         else:
-            matching_node.latest_resp = response
+            matching_node.latest_resp = response[1]
 
-        debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersed packet to node: {matching_node.node_id}")
+        D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersed packet to node: {matching_node.node_id}")
