@@ -4,7 +4,7 @@ Comments
 from sys import getsizeof as getsize
 import os
 import shutil as sh
-import time as t
+import datetime as dt
 from .tools.nodeserial import threaded, stop_threads_flag
 from .tools.packet import deconst_response_packet, DATATYPE, LogMessage
 from .tools.debug import Debugger as D, DEBUG_LEVELS
@@ -34,7 +34,11 @@ class Logger:
         
         '''
         filepath = self.location + '/logs/logdata'
-        logtime = t.strftime('%x %X') #time from epoch measure
+        timeparse = dt.now()
+        mil = lambda x:int(x)//1000
+        logtime = f'{timeparse.month}/{timeparse.day}/{timeparse.year} {timeparse.hour}:{timeparse.minute}:{timeparse.second}.{mil(timeparse.microsecond)}'
+
+        #t.strftime('%x %X') #time from epoch measure
         try:
             logmsg  # Properly decode and strip the data
             if not logmsg:
