@@ -116,6 +116,7 @@ def deconst_response_packet(data):
     response_type = ''
     response_dict = {}
     data = tfproto.NodeResponse.FromString(data)
+    read_data = "none"
     
     if data.HasField('general_response'):
         read_data = 'general'

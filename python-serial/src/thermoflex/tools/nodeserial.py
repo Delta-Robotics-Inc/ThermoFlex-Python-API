@@ -71,13 +71,16 @@ class Receiver:
         self.packetData = bytearray()
         self.packetLength = 0
         self.network = network
+        self.node_debug_str = ""
 
     def receive(self):
         port = self.network.arduino
-        node_debug_str = ""
         #try:
         if port.in_waiting > 0:
             debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"\nReading incoming data from network {self.network.idnum}:")
+        elif len(self.node_debug_str) > 0: # If there is no incoming data, but there is debug data, print the debug data
+            debug_raw(DEBUG_LEVELS['DEVICE'], self.node_debug_str)
+            self.node_debug_str = ""
         while port.in_waiting > 0:
             
             # Check if the stop_threads_flag has been set, if so, break the loop and end the thread
@@ -89,19 +92,19 @@ class Receiver:
 
             if self.state == ReceptionState.WAIT_FOR_START_BYTE:
                 if byte == STARTBYTE:
-                    debug(DEBUG_LEVELS['DEVICE'], "SerialThread", node_debug_str)
-                    node_debug_str = ""
+                    debug(DEBUG_LEVELS['DEVICE'], "SerialThread", self.node_debug_str)
+                    self.node_debug_str = ""
                     #debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Start Byte Found: {byte}")
                     self.packetData.clear()
                     self.packetData.append(byte)
                     self.state = ReceptionState.READ_LENGTH
                 else:
                     # debug_raw(DEBUG_LEVELS['NONE'], chr(byte))
-                    node_debug_str += chr(byte)
-                    if len(node_debug_str) > 100:
+                    self.node_debug_str += chr(byte)
+                    if len(self.node_debug_str) > 100:
                         #print(node_debug_str, end="")
-                        debug_raw(DEBUG_LEVELS['DEVICE'], node_debug_str)
-                        node_debug_str = ""
+                        debug_raw(DEBUG_LEVELS['DEVICE'], self.node_debug_str)
+                        self.node_debug_str = ""
 
             elif self.state == ReceptionState.READ_LENGTH:
                 self.packetData.append(byte)
