@@ -320,8 +320,8 @@ class Node:
                                                              
 #---------------------------------------------------------------------------------------  
 
-class muscle:
-    def __init__(self, idnum:int, resist, diam, length, masternode:object = None):
+class Muscle:
+    def __init__(self, idnum:int, resist = None, diam = None, length = None, masternode:object = None):
         self.idnum = idnum 
         self.mosfetnum = None
         self.resistance = resist

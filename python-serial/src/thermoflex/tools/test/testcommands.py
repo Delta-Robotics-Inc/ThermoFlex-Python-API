@@ -1,6 +1,9 @@
 import time as t
 import random as r
-from thermoflex.commands import *
+from thermoflex.network import *
+from thermoflex.devices import *
+from ..nodeserial import Receiver, send_command_str
+
 
 
 def random_number(length):
@@ -9,21 +12,14 @@ def random_number(length):
     return r.randint(start, end)
 
 
-class testnet(nodenet):
+class testnet(NodeNet):
     def __init__(self):
-        self.id = 0xFF
+        self.idnum = 0x54
         self.port = 'PortT'
-        
-    def send_packet(self,node,cmd):
-        send_command_str(node, cmd, self.arduino)
-    
-    def receive_packet(self):
-        print('goes to receive func')
 
-class testnode(node):
+class testnode(Node):
     def __init__(self):
         super().init()
-        self.serial = random_number(12)
-    
-    
+        self.serial = random_number(3)
+        
 #override node classes

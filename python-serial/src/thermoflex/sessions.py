@@ -122,7 +122,6 @@ class Session:
         
         sh.copytree(f'{self.environment}/logs' , f'{base_path}/session{self.id}log', dirs_exist_ok = True)
         os.remove(self.environment)
-        self.connode.closePort()
     
     def logging(self,cmd, logtype:int): #creates the LogMessage object with the available log data
         #print(cmd,tp)   #DEBUG
@@ -157,6 +156,3 @@ class Session:
             with open(FILEDATA, 'xt') as f:
                 pass
             
-def endsession(session:object):
-    session.end()
-    del session

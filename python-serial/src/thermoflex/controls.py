@@ -1,7 +1,8 @@
 
 
 from .network import NodeNet
-from .devices import Node, muscle
+from .devices import Node
+from .sessions import Session
 from .tools.nodeserial import stop_threads_flag, threaded
 from .tools.debug import Debugger as D, DEBUG_LEVELS
 import serial as s
@@ -14,7 +15,7 @@ prod = [105] # Product id list
 
 #-----------------------------------------------------------------------------------------------------------
 
-#TODO: put a rediscover in discover, have discover check for existing node serial numbers                         
+#TODO: put a rediscover in discover, have discover check for existing serial numbers                         
 
 def discover(proid = prod): 
     '''
@@ -45,7 +46,7 @@ def discover(proid = prod):
 #------------------------------------------------------------------------------------
 
 @threaded
-def timer(time):
+def timer(time):# TODO: seperate event flag f
     global timeleft
     timeleft = time
     for x in range(time):
@@ -53,11 +54,19 @@ def timer(time):
         t.sleep(1)
     stop_threads_flag.clear()
 
+def update():
+    '''
+    
+    Updates all networks in the list to send commands and receive data
+    
+    '''  
+    for net in NodeNet.netlist:
+        net.refreshDevices()
 
 def updatenet(network:object): #choose which node to update and the delay
     '''
     
-    Updates all nodes in the list to send commands and receive data
+    Updates a specific network.
     
     '''  
     network.refreshDevices()
@@ -69,6 +78,9 @@ def delay(time):
         for net in NodeNet.netlist:
             updatenet(net)
         
+def endsession(session:object):
+    session.end()
+    del session
 
 def endAll():
     '''
@@ -94,13 +106,17 @@ def endAll():
             pass
         finally:
             del node
+    
+    for net in NodeNet.netlist:
+        del net
+
+    for sess in Session.sessionl:
+        sess.end()
+        del sess
+
 
     sys.exit() # End program -> change if program needs to continue
 
-def userinput(): #TODO: add rest of inputs
-    usr = input()
-    if 'quit' in usr:
-        sys.exit()
 
     
 #----------------------------------------------------------------------------------------------------------------------------

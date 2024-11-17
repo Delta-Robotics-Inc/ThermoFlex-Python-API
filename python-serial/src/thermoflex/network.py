@@ -8,7 +8,7 @@ import time as t
 #TODO: id address pull from network
 def sess(net):#create session if one does not exist
     if Session.sescount>0:
-        return Session.sessionl[0]
+        return Session.sessionl[-1]
     else:
         return Session(net)
 class NodeNet:
@@ -20,16 +20,16 @@ class NodeNet:
         self.port = port
         self.arduino = None
         self.broadcast_node = Node(0,self)
-        self.node0 = Node(1, self)
+        self.self_node = Node(1, self)
         self.broadcast_node.node_id = [0xFF,0xFF,0xFF]
-        self.node0.node_id = [0x00,0x00,0x01]
-        self.node_list = [] # list of connected nodes
-        self.node_list.extend([self.broadcast_node,self.node0])
+        self.self_node.node_id = [0x00,0x00,0x01]
+        self.node_list = [] # list of connected nodes; leave broadcast node and self-node out of list
         self.command_buff = []
         self.sess = sess(self)
         self.openPort()
         self.debug_name = f"NodeNet {self.idnum}" # Name for debugging purposes
-        serial_thread(self)
+        self.refreshDevices()
+        self.start_serial()
         
     def refreshDevices(self):
         '''
@@ -63,12 +63,12 @@ class NodeNet:
             if node_id == x.node_id:
                 return x
             else:
-                pass
+                continue
     
         D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Node: {node_id} not found in {self.debug_name}")
 
     def nodeonNet(self): #periodically sends network
-        command_t(self.node0, name = "status", params = [1])
+        command_t(self.self_node, name = "status", params = [1])
         send_command() #send network and recieve unknown response length
     
     def openPort(self): 
@@ -105,7 +105,9 @@ class NodeNet:
     
         except s.SerialException:
            D.debug(DEBUG_LEVELS['ERROR'], self.debug_name, "Error: Serial not closed")
-           
+
+    def start_serial(self):
+        serial_thread(self)           
     # Disperse incoming response packets to the appropriate node manager object, based on the sender_id
     def disperse(self, rec_packet):
         D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersing packet: {rec_packet}")
