@@ -1,5 +1,4 @@
 
-
 from .network import NodeNet
 from .devices import Node
 from .sessions import Session
@@ -8,12 +7,16 @@ from .tools.debug import Debugger as D, DEBUG_LEVELS
 import serial as s
 import serial.tools.list_ports as stl
 import time as t
-import sys
+#import syslog
 
 prt = stl.comports(include_links=False)
 prod = [105] # Product id list
 
 #-----------------------------------------------------------------------------------------------------------
+
+# Wrapper functions for the debugger class
+def set_debug_level(level):
+    D.set_debug_level(level)
 
 #TODO: put a rediscover in discover, have discover check for existing serial numbers                         
 
@@ -88,6 +91,10 @@ def endAll():
     Closes all node ports. and end all threads.
     
     '''
+    # Disable all nodes and give time for the message to be sent
+    for node in Node.nodel:
+        node.disableAll()  # TODO replace with a "endAll" function that sends a message to all nodes to end the current session
+        t.sleep(0.1)
 
     stop_threads_flag.set() # End all threads by raising this flag
 

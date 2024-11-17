@@ -215,7 +215,7 @@ class Node:
         self.net.command_buff.append(command)
 
     def setMode(self, conmode, device = 'all'):
-        D.debug(DEBUG_LEVELS['INFO'], "muscle", f"Setting mode for {device} to {conmode}")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Setting mode for port {device} to {conmode}")
         '''
         
         Sets the data mode that the muscle will recieve. identify muscles by dictionary key.
@@ -237,7 +237,7 @@ class Node:
         elif type(conmode) == int:
             cmode = conmode
         else:
-            D.debug(DEBUG_LEVELS['ERROR'], "muscle", f"Error: Incorrect option")
+            D.debug(DEBUG_LEVELS['ERROR'], "Node", f"Error: Incorrect option")
             return    
           
         muscles = self.muscles
@@ -255,16 +255,16 @@ class Node:
                     D.debug(DEBUG_LEVELS['DEBUG'], "muscle", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
       
     def setSetpoint(self, musc:int, conmode, setpoint:float):   #takes muscle object idnumber and 
-        D.debug(DEBUG_LEVELS['INFO'], "muscle", f"Setting setpoint for {musc} to {setpoint}")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Setting setpoint for {musc} to {setpoint}")
 
         muscl = f"m{self.muscles[str(musc)].idnum+1}"     
         cmode = conmode
         command = command_t(self, name = SS, device = muscl, params = [cmode, setpoint])
         self.net.command_buff.append(command)
-        D.debug(DEBUG_LEVELS['DEBUG'], "muscle", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
+        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
      
     def setMuscle(self, idnum:int, muscle:object): # takes muscle object and idnumber and adds to a dictionary
-        D.debug(DEBUG_LEVELS['INFO'], "muscle", f"Setting muscle {idnum} to {muscle}")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Setting muscle {idnum} to {muscle}")
         '''
         
         Adds the selected muscle to the node and assigns an id number
@@ -276,17 +276,17 @@ class Node:
         muscle.mosfetnum = mvlist.index(muscle)
     
     def enable(self, muscle:object):
-        D.debug(DEBUG_LEVELS['INFO'], "muscle", f"Enabling muscle {muscle.idnum}")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Enabling muscle {muscle.idnum}")
         '''
         
         Enables the muscle selected.
         
         '''
         self.net.command_buff.append(command_t(self, SE, device = f'm{muscle.idnum+1}', params = [True]))
-        D.debug(DEBUG_LEVELS['DEBUG'], "muscle", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
+        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
 
     def enableAll(self):
-        D.debug(DEBUG_LEVELS['INFO'], "muscle", f"Enabling all muscles")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Enabling all muscles")
         '''
         
         Enables all muscles.
@@ -298,17 +298,18 @@ class Node:
             self.net.command_buff.append(command)
      
     def disable(self, muscle:object):
-        D.debug(DEBUG_LEVELS['INFO'], "muscle", f"Disabling muscle {muscle.idnum}")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Disabling muscle {muscle.idnum}")
         '''
         
         Disables the muscle selected.
         
         '''
         self.net.command_buff.append(command_t(self, SE, device = f'm{muscle.idnum+1}', params =  [False]))
-        D.debug(DEBUG_LEVELS['DEBUG'], "muscle", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
+        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
 
 
     def disableAll(self):
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Disabling all muscles")
         '''
         
         Disables all muscles.
@@ -384,9 +385,9 @@ class Muscle:
        
         '''
 
-        if True:
+        if bool:
             self.masternode.enable(self)
-        elif False:
+        else:
             self.masternode.disable(self)
          
 #----------------------------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 from .tools.nodeserial import serial_thread, send_command
 from .tools.packet import command_t, deconst_response_packet
-from .devices import Node, muscle
+from .devices import Node, Muscle
 from .sessions import Session
 from .tools.debug import Debugger as D, DEBUG_LEVELS
 import serial as s

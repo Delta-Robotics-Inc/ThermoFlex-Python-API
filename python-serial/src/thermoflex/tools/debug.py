@@ -1,11 +1,13 @@
 from sys import getsizeof
 DEBUG_LEVELS = {
     'NONE': 0,
-    'ERROR': 1,
-    'WARNING': 2,
-    'INFO': 3,
-    'DEBUG': 4
+    'DEVICE': 1,
+    'ERROR': 2,
+    'WARNING': 3,
+    'INFO': 4,
+    'DEBUG': 5
 }
+
 class Debugger:
     TF_DEBUG_LEVEL = DEBUG_LEVELS['ERROR']
     DEBUG_LOG = False
