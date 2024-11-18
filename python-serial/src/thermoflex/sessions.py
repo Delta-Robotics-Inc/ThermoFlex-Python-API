@@ -123,7 +123,6 @@ class Session:
             os.chdir(self.environment)
     
     def end(self): #ends the session
-        
         sh.copytree(f'{self.environment}/logs' , f'{base_path}/session{self.id}log', dirs_exist_ok = True)
         os.remove(self.environment)
     

@@ -71,28 +71,42 @@ class Receiver:
         self.packetData = bytearray()
         self.packetLength = 0
         self.network = network
-        self.serial_debug = ''
+        self.node_debug_str = ""
 
     def receive(self):
         port = self.network.arduino
         #try:
         if port.in_waiting > 0:
             D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"\nReading incoming data from network {self.network.idnum}:")
+        elif len(self.node_debug_str) > 0: # If there is no incoming data, but there is debug data, print the debug data
+            D.debug_raw(DEBUG_LEVELS['DEVICE'], self.node_debug_str)
+            self.node_debug_str = ""
         while port.in_waiting > 0:
+            
+            # Check if the stop_threads_flag has been set, if so, break the loop and end the thread
+            if stop_threads_flag.is_set():
+                break
+
             byte = port.read(1)
             byte = byte[0]  # Convert from bytes to integer
 
             if self.state == ReceptionState.WAIT_FOR_START_BYTE:
                 if byte == STARTBYTE:
-                    D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Start Byte Found: {byte}")
+                    D.debug(DEBUG_LEVELS['DEVICE'], "SerialThread", self.node_debug_str)
+                    self.node_debug_str = ""
+                    #debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Start Byte Found: {byte}")
                     self.packetData.clear()
                     self.packetData.append(byte)
                     self.state = ReceptionState.READ_LENGTH
-                    self.network.sess.logging(self.serial_debug, 2) # sends serial messages to debug
-                    self.serial_debug = ''
+                    self.network.sess.logging(self.node_debug_str, 2) # sends serial messages to debug
+                    self.node_debug_str = ''
                 else:
-                    self.serial_debug += str(byte)
-                    D.debug_raw(DEBUG_LEVELS['DEBUG'], chr(byte))
+                    # debug_raw(DEBUG_LEVELS['NONE'], chr(byte))
+                    self.node_debug_str += chr(byte)
+                    if len(self.node_debug_str) > 100:
+                        #print(node_debug_str, end="")
+                        D.debug_raw(DEBUG_LEVELS['DEVICE'], self.node_debug_str)
+                        self.node_debug_str = ""
 
             elif self.state == ReceptionState.READ_LENGTH:
                 self.packetData.append(byte)
@@ -128,11 +142,11 @@ def serial_thread(network):
     receiver = Receiver(network)
 
     while True:
+        cmd_rec = receiver.receive()
+
         # Check if the stop_threads_flag has been set, if so, break the loop and end the thread
         if stop_threads_flag.is_set():
             break
-
-        cmd_rec = receiver.receive()
         #print(cmd_rec) #DEBUG
         if not cmd_rec:
             pass
