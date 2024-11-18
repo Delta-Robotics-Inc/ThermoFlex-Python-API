@@ -10,12 +10,12 @@ net1.refreshDevices()
 t.sleep(2)
 
 #for x in net1.node_list: print(x.node_id)
-node1 = net1.getDevice(net1.node_list[2].node_id)
-tf.Debugger.DEBUG_PRINT = False
-#tf.Debugger.DEBUG_LOG = True
+node1 = net1.getDevice(net1.node_list[0].node_id)
+tf.Debugger.DEBUG_PRINT = True
+tf.Debugger.DEBUG_LOG = True
 tf.Debugger.set_debug_level('DEBUG')
 # Get node 1 from node net by id
-muscle = tf.devices.muscle
+muscle = tf.devices.Muscle
 
 muscle1 = muscle(idnum = 0, resist= 300, diam= 2, length= 150)
 muscle2 = muscle(idnum = 1, resist= 290, diam= 2, length= 145)

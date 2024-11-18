@@ -4,7 +4,7 @@ Comments
 from sys import getsizeof as getsize
 import os
 import shutil as sh
-import datetime as dt
+from datetime import datetime as dt
 from .tools.nodeserial import threaded, stop_threads_flag
 from .tools.packet import deconst_response_packet, DATATYPE, LogMessage
 from .tools.debug import Debugger as D, DEBUG_LEVELS
