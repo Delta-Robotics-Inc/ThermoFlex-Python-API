@@ -7,7 +7,7 @@ from .tools.debug import Debugger as D, DEBUG_LEVELS
 import serial as s
 import serial.tools.list_ports as stl
 import time as t
-#import syslog
+import sys
 
 prt = stl.comports(include_links=False)
 prod = [105] # Product id list

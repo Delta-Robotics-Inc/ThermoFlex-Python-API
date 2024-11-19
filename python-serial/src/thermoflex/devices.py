@@ -21,7 +21,11 @@ PERCENT = "percent"
 AMP = "amps"
 VOLT = "volts"
 DEG =  "degree"
-#proto file definitions
+
+
+def sizelimit(data:list,size = 100):
+    if len(data) > size:
+        data.pop(-1)
 
 #---------------------------------------------------------------------------------------
 
@@ -151,7 +155,8 @@ class Node:
             for key in self.node_status.keys():
                 try:
                     if key == 'errors':
-                        self.node_status[key].append(resp_data[key])
+                        self.node_status[key].insert(0,resp_data[key])
+                        sizelimit(self.node_status[key])
                     else:
                         self.node_status[key] = resp_data[key]
                 except KeyError:
@@ -169,11 +174,13 @@ class Node:
                         try:
                             resp_data[key]
                             if type(musc.SMA_status[key]) == list:
-                                musc.SMA_status[key].append(resp_data[key])
+                                musc.SMA_status[key].insert(0,resp_data[key])
+                                sizelimit(musc.SMA_status[key])
                             else:
                                 musc.SMA_status[key] = resp_data[key]
                         except KeyError:
                             continue
+                        
                     musc.enable_status = resp_data['enable_status']
                     musc.cmode = command_t.modedef[resp_data['dev']]
                     musc.train_state = resp_data['trainstate']
@@ -334,7 +341,18 @@ class Muscle:
         self.train_state = None
         self.SMA_status = {'pwm_out':[],'load_amps':[],'load_voltdrop':[],'SMA_default_mode':None,'SMA_deafult_setpoint':None,'SMA_rcontrol_kp':None,'SMA_rcontrol_ki':None,'SMA_rcontrol_kd':None, 'vld_scalar':None,'vld_offset':None,'r_sns_ohms':[],'amp_gain':[],'af_mohms':[],'delta_mohms':[]}
 
-      
+    def muscleStatus(self):
+        status = ""
+        for state in status:
+            if type(state) == list:
+                status += f'{state}:{self.SMA_status[state][0]}'
+            else:
+                status += f'{state}:{self.SMA_status[state]}'
+        return status
+    
+    def getResistance(self):
+        return self.SMA_status['r_sns_ohms']
+    
     def changeMusclemos(self, mosfetnum:int):
         '''
         

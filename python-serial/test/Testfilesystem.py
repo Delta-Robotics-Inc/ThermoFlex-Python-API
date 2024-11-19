@@ -41,5 +41,5 @@ node1.disableAll()
 m_to_train.setSetpoint(0.1)
 # see node data
 
-
+tf.endAll()
 # add log data to file

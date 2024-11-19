@@ -43,6 +43,7 @@ class Debugger:
             Debugger.ROLL((level,message))
             if Debugger.DEBUG_PRINT == True: 
                 print(message, end='')
+            if Debugger.DEBUG_LOG == True: Debugger.DEBUG_SESSION.logging((level,message.replace('\n','|')),3)
 
 
 
