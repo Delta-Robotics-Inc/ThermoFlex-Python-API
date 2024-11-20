@@ -6,7 +6,7 @@ import os
 import shutil as sh
 from datetime import datetime as dt
 from .tools.nodeserial import threaded, stop_threads_flag
-from .tools.packet import deconst_response_packet, DATATYPE, LogMessage
+from .tools.packet import deconst_serial_response, DATATYPE, LogMessage
 from .tools.debug import Debugger as D, DEBUG_LEVELS
 from .devices import Node
 base_path = os.getcwd().replace("\\","/") + '/ThermoflexSessions' #set base filepath
