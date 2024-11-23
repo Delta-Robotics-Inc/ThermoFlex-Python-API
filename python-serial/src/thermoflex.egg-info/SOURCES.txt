@@ -5,6 +5,7 @@ src/thermoflex/__init__.py
 src/thermoflex/controls.py
 src/thermoflex/devices.py
 src/thermoflex/network.py
+src/thermoflex/session_analyzer.py
 src/thermoflex/sessions.py
 src/thermoflex.egg-info/PKG-INFO
 src/thermoflex.egg-info/SOURCES.txt

@@ -1,5 +1,5 @@
 from .tools.nodeserial import serial_thread, send_command
-from .tools.packet import command_t, deconst_response_packet
+from .tools.packet import command_t, deconst_serial_response
 from .devices import Node, Muscle
 from .sessions import Session
 from .tools.debug import Debugger as D, DEBUG_LEVELS
@@ -119,7 +119,7 @@ class NodeNet:
     def disperse(self, rec_packet):
         D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersing packet: {rec_packet}")
         packet_node_id = rec_packet['sender_id']# Node ID is stored as a list of integers
-        response = deconst_response_packet(rec_packet['payload'])
+        response = deconst_serial_response(rec_packet['payload'])
         matching_node = None
 
         # Check if the node already exists in the network

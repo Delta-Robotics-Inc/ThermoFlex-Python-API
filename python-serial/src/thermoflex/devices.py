@@ -21,7 +21,11 @@ PERCENT = "percent"
 AMP = "amps"
 VOLT = "volts"
 DEG =  "degree"
-#proto file definitions
+
+
+def enforce_size_limit(data:list,size = 100):
+    if len(data) > size:
+        data.pop(-1)
 
 #---------------------------------------------------------------------------------------
 
@@ -118,7 +122,7 @@ class Node:
     def status(self,type):
         '''
         
-        Requsts and collects the status from the device.
+        Requests and collects the status from the device.
                 
         '''
         if type == 'dump':
@@ -129,7 +133,7 @@ class Node:
                 #send_command(status,self.net)
                 #send_command_str(status,self.net)
                 self.net.command_buff.append(status)
-                t.sleep(0.5)
+                t.sleep(0.1)
                 
                 return self.status_curr
 
@@ -141,7 +145,7 @@ class Node:
                 #send_command(status,self.net)
                 #send_command_str(status,self.net)
                 self.net.command_buff.append(status)
-                t.sleep(0.5)
+                t.sleep(0.1)
 
                 return self.status_curr
 
@@ -156,7 +160,8 @@ class Node:
             for key in self.node_status.keys():
                 try:
                     if key == 'errors':
-                        self.node_status[key].append(resp_data[key])
+                        self.node_status[key].insert(0,resp_data[key])
+                        enforce_size_limit(self.node_status[key])
                     else:
                         self.node_status[key] = resp_data[key]
                 except KeyError:
@@ -174,11 +179,13 @@ class Node:
                         try:
                             resp_data[key]
                             if type(musc.SMA_status[key]) == list:
-                                musc.SMA_status[key].append(resp_data[key])
+                                musc.SMA_status[key].insert(0,resp_data[key])
+                                enforce_size_limit(musc.SMA_status[key])
                             else:
                                 musc.SMA_status[key] = resp_data[key]
                         except KeyError:
                             continue
+                        
                     musc.enable_status = resp_data['enable_status']
                     musc.cmode = command_t.modedef[resp_data['dev']]
                     musc.train_state = resp_data['trainstate']
@@ -220,12 +227,14 @@ class Node:
         self.net.command_buff.append(command)
 
     def setMode(self, conmode, device = 'all'):
-        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Setting mode for port {device} to {conmode}")
         '''
         
         Sets the data mode that the muscle will recieve. identify muscles by dictionary key.
         
         '''
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Setting mode for port {device} to {conmode}")
+
+        # TODO wrap the following code into a function "identifyControlMode()" and replace in other methods
         cmode = None
         if conmode =="percent":
             cmode = command_t.modedef.index(conmode)
@@ -260,6 +269,9 @@ class Node:
                     D.debug(DEBUG_LEVELS['DEBUG'], "muscle", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
       
     def setSetpoint(self, musc:int, conmode, setpoint:float):   #takes muscle object idnumber and 
+        '''
+        Sets the setpoint for a muscle at an index in the node muscles. Set conmode based on dictionary key.
+        '''
         D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Setting setpoint for {musc} to {setpoint}")
 
         muscl = f"m{self.muscles[str(musc)].idnum+1}"     
@@ -339,9 +351,20 @@ class Muscle:
         self.masternode = masternode
         self.enable_status = None
         self.train_state = None
-        self.SMA_status = {'pwm_out':[],'load_amps':[],'load_voltdrop':[],'SMA_default_mode':None,'SMA_deafult_setpoint':None,'SMA_rcontrol_kp':None,'SMA_rcontrol_ki':None,'SMA_rcontrol_kd':None, 'vld_scalar':None,'vld_offset':None,'r_sns_ohms':[],'amp_gain':[],'af_mohms':[],'delta_mohms':[]}
+        self.SMA_status = {'pwm_out':[],'load_amps':[],'load_voltdrop':[],'SMA_default_mode':None,'SMA_default_setpoint':None,'SMA_rcontrol_kp':None,'SMA_rcontrol_ki':None,'SMA_rcontrol_kd':None, 'vld_scalar':None,'vld_offset':None,'r_sns_ohms':[],'amp_gain':[],'af_mohms':[],'delta_mohms':[]}
 
-      
+    def muscleStatus(self):
+        status = ""
+        for state in status:
+            if type(state) == list:
+                status += f'{state}:{self.SMA_status[state][0]}'
+            else:
+                status += f'{state}:{self.SMA_status[state]}'
+        return status
+    
+    def getResistance(self):
+        return self.SMA_status['r_sns_ohms']
+    
     def changeMusclemos(self, mosfetnum:int):
         '''
         

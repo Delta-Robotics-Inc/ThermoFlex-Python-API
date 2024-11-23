@@ -1,6 +1,6 @@
+from datetime import time as t, datetime as dt
+timeparse = dt.now()
+mil = lambda x:int(x)//1000
+logtime = f'{timeparse.month}/{timeparse.day}/{timeparse.year} {timeparse.hour}:{timeparse.minute}:{timeparse.second}.{mil(timeparse.microsecond)}'
 
-a = {'b':'45', 'c': 44, 'x': 15.25}
-d = '45.25'
-e = 70
-  #.replace('}','')
-print(f'{d} {e} {str(a).replace(,'')}')
+print(logtime)
