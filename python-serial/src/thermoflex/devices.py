@@ -40,12 +40,17 @@ class Node:
         self.board_version = None
         self.node_status = {'uptime':None, 'errors':[],'volt_supply':None,'pot_values':None,'log_interval':None,'vrd_scalar':None,'vrd_offset':None,'max_current':None,'min_v_supply':None}
         self.mosports = mosports  #mosfet ports
-        self.muscles = {}
         self.logstate = {'printlog':False, 'binarylog':False, 'filelog': False}
         self.status_curr = None
         self.latest_resp = None
         self.bufflist = []
         self.lastcmnd = None
+
+        # Make default muscles
+        self.muscle0 = Muscle(0, 0, 0, 0, self)
+        self.muscle1 = Muscle(1, 0, 0, 0, self)
+        self.muscles = {"0":self.muscle0, "1":self.muscle1}
+
         
         
     def testMuscles(self, sendformat:int = 1):
@@ -275,6 +280,8 @@ class Node:
         mvlist = list(self.muscles.values())
         muscle.mosfetnum = mvlist.index(muscle)
     
+    # TODO why is this muscle an object and the setMuscle() takes an int ??? and the muscle list is a dictionary with "1" not as an index.
+    # sorry for the passive aggression its just late. -Mark 24-1122
     def enable(self, muscle:object):
         D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Enabling muscle {muscle.idnum}")
         '''

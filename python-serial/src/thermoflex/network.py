@@ -57,6 +57,13 @@ class NodeNet:
                 self.node_list.remove(node)
 
     def getDevice(self, node_id):
+        # Helper function to convert an integer to a byte list
+        def int_to_bytearray(n):
+            return list(n.to_bytes((n.bit_length() + 7) // 8, byteorder='big')) or [0]
+
+        # If node_id is an integer, convert it to a byte list
+        if isinstance(node_id, int):
+            node_id = int_to_bytearray(node_id)
         
         for x in self.node_list:
             D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Checking node: {x.node_id} with {node_id}")
