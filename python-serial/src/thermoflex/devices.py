@@ -129,7 +129,7 @@ class Node:
             try:
                 self.net.openPort()
             finally:
-                status = command_t(self, name = 'status', params = [2])
+                status = command_t(self, name = 'status', params = [2], device="all")
                 #send_command(status,self.net)
                 #send_command_str(status,self.net)
                 self.net.command_buff.append(status)
@@ -141,7 +141,7 @@ class Node:
             try:
                 self.net.openPort()
             finally:
-                status = command_t(self, name = 'status', params = [1])
+                status = command_t(self, name = 'status', params = [1], device="all")
                 #send_command(status,self.net)
                 #send_command_str(status,self.net)
                 self.net.command_buff.append(status)
@@ -352,6 +352,8 @@ class Muscle:
         self.enable_status = None
         self.train_state = None
         self.SMA_status = {'pwm_out':[],'load_amps':[],'load_voltdrop':[],'SMA_default_mode':None,'SMA_default_setpoint':None,'SMA_rcontrol_kp':None,'SMA_rcontrol_ki':None,'SMA_rcontrol_kd':None, 'vld_scalar':None,'vld_offset':None,'r_sns_ohms':[],'amp_gain':[],'af_mohms':[],'delta_mohms':[]}
+
+    # TODO add function to get status (send getStatus command)
 
     def muscleStatus(self):
         status = ""

@@ -127,7 +127,7 @@ class NodeNet:
             if node.node_id == packet_node_id:
                 matching_node = node
                 D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to existing node with id: {node.node_id}")
-                return
+                break
             
         # If the node does not exist in the network, add it
         if(matching_node == None):  

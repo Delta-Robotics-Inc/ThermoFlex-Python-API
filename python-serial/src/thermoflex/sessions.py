@@ -138,9 +138,9 @@ class Session:
             sender_id_int = int.from_bytes(cmd['sender_id'], byteorder='big')
             logmsg.message_address = sender_id_int
         elif logtype == 2:
-            sender_id_int = int.from_bytes(cmd['sender_id'], byteorder='big')
-            logmsg.message_address = sender_id_int
+            sender_id_int = 0 #int.from_bytes(cmd['sender_id'], byteorder='big')
             logmsg = LogMessage('SERIAL_DEBUG', cmd)
+            logmsg.message_address = sender_id_int
         elif logtype == 3:
             logmsg = LogMessage(cmd[0],cmd[1]) #for DEBUG LOGGING
         else:
