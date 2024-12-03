@@ -1,6 +1,11 @@
-from datetime import time as t, datetime as dt
-timeparse = dt.now()
-mil = lambda x:int(x)//1000
-logtime = f'{timeparse.month}/{timeparse.day}/{timeparse.year} {timeparse.hour}:{timeparse.minute}:{timeparse.second}.{mil(timeparse.microsecond)}'
+a = 'all m2'
+b = 'm1 m3'
+c = 'M2 m1 m4'
 
-print(logtime)
+
+inta = a.split(' ')
+intb = b.split('m')
+intc = c.strip().lower().split('m')
+
+print(inta, intb, intc)
+
