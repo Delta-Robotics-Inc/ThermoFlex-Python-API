@@ -1,1 +1,0 @@
-Note for Developers: We need to figure out the best place for these examples and getting started scripts. I believe that placing them in a general `ThermoFlex-Support` repository will be the best for us because there we can house all customer resources.

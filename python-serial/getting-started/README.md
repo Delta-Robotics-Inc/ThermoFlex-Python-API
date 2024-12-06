@@ -1,19 +1,3 @@
-Metadata-Version: 2.1
-Name: thermoflex
-Version: 0.0.3
-Summary: This is the library for controlling the ThermoFlex muscle system by Delta Robotics
-Author-email: Marvin Stephens <marvin.stephens44@yahoo.com>, Mark D <mark@deltaroboticsinc.com>
-Project-URL: Homepage, https://www.deltaroboticsinc.com/
-Project-URL: Documentation, https://docs.deltaroboticsinc.com/
-Project-URL: Repository, https://github.com/Delta-Robotics-Inc/TF-Python-Serial
-Keywords: thermoflex,Delta,Delta Robotics
-Requires-Python: >=3.8
-Description-Content-Type: text/markdown
-License-File: LICENSE.txt
-Requires-Dist: pyserial==3.5
-Requires-Dist: protobuf==5.28.3
-Requires-Dist: pandas==2.2.3
-
 #### System Requirements
 
 - Python 3.12 or greater
@@ -40,7 +24,7 @@ or you can install manually by downloading the files from our Github and running
 ```python
 import thermoflex as tf
 
-netlist = tf.discover([105])
+netlist = tf.discover([115])
 network1 = netlist[0]
 ```
 
@@ -108,7 +92,7 @@ session1 = session[0]
 
 From here, you can add commands to your command buffer. The commands are as follows.
 
-| Node Commands                        | Function                                                                                                                                  |
+| **Node Commands**                        | **Function**                                                                                                  |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | status()                             | Checks the status of the node and returns its status                                                                                      |
 | getStatus()                          | Returns the latest node status received                                                                                                   |
@@ -130,7 +114,7 @@ node0.enable(muscle1)
 
 The muscle objects also have their own commands that are passed to their commanding node.  These commands are as follows.
 
-| Muscle Command                   | Function                                                                                                                                  |
+| **Muscle Command**                   | **Function**                                                                                                                                  |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | changeMusclemos(*mosfetnum*:int) | Manually changes the mosfet number of the selected muscle. The mosfet number is set automatically when the muscle is assigned to a node;  |
 | setMode(conmode)                 | Sets the data type that a given muscle receives for its setSetpoint() command; conmode : (percent, volts, amps, ohms, train)              |

@@ -11,3 +11,9 @@ dependencies = ['pyserial == 3.5','protobuf == 5.28.3', 'pandas == 2.2.3']
 description = "This is the library for controlling the ThermoFlex muscle system by Delta Robotics"
 keywords = ["thermoflex" , "Delta", "Delta Robotics"]
 requires-python = ">= 3.8"
+
+[project.urls]
+
+Homepage = "https://www.deltaroboticsinc.com/"
+Documentation = "https://docs.deltaroboticsinc.com/"
+Repository = "https://github.com/Delta-Robotics-Inc/TF-Python-Serial"
