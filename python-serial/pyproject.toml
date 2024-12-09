@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "thermoflex"
 version = "0.0.3"
-authors = [{name = "Marvin Stephens", email = "marvin.stephens44@yahoo.com"}, {name = "Mark D", email = "mark@deltaroboticsinc.com"}]
-readme = "README.md"
+authors = [{name = "Mark D", email = "mark@deltaroboticsinc.com"}, {name = "Marvin S", email = "marvin.stephens44@yahoo.com"}]
+readme = "Getting Started.md"
 dependencies = ['pyserial == 3.5','protobuf == 5.28.3', 'pandas == 2.2.3']
 description = "This is the library for controlling the ThermoFlex muscle system by Delta Robotics"
 keywords = ["thermoflex" , "Delta", "Delta Robotics"]

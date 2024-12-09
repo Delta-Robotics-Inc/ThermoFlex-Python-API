@@ -1,8 +1,13 @@
-*Important Dependencies*
-    pyserial-3.5 or greater
-    python-3.12 or greater
+#### System Requirements
 
-First steps
+- Python 3.12 or greater
+- Pyserial 3.5 or greater
+
+## Introduction
+
+###### The Thermoflex muscle is a current activated artificial muscle that is designed to have a low profile usage and simple activation and deactivation sequence. The purpose of this library is 2-fold; to become the working backend of the Delta hardware application and to allow for open-source development of the Nitinol muscle.
+
+## First steps
 
     Ensure that you have a Node and Muscle device. 
     

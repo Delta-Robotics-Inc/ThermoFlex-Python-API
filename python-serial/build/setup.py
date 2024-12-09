@@ -1,18 +1,1 @@
-from setuptools import setup
-
- 
-Description = "Thermoflex repository"
-Describe_long = "This is the repository for the thermoflex muscle by Delta Robotics"
-    
- 
-setup(
-      name="thermoflex",
-      version="0.0.1",
-      install_requires=['pyserial','importlib-serial','importlib-serial.tools.list_ports', 'importlib-time', 'importlib-threading'],
-      description=Description,
-      package_dir={"":"tf-src"},
-      long_description=Describe_long,
-      
-      )
-    
-
+pypi-AgENdGVzdC5weXBpLm9yZwIkOTAzOGFhMzgtNmJlZC00NWI1LWJjZGYtODBmMjNkOGZiMzY2AAIqWzMsIjVlMDI0OGIxLTE5MDUtNDViZS1iZDhiLTA3YzIxNDg0YjgzNiJdAAAGILiqM1lDvBFMS576w2VkAGKXHTAtf7b7J_k51icTZdFa
