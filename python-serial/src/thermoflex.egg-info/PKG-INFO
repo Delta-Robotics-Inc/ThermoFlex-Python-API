@@ -1,8 +1,8 @@
 Metadata-Version: 2.1
 Name: thermoflex
-Version: 0.0.3
+Version: 0.0.1
 Summary: This is the library for controlling the ThermoFlex muscle system by Delta Robotics
-Author-email: Mark D <mark@deltaroboticsinc.com>, Marvin S <marvin.stephens44@yahoo.com>
+Author-email: Marvin S <marvin@deltaroboticsinc.com>, Mark D <mark@deltaroboticsinc.com>
 Project-URL: Homepage, https://www.deltaroboticsinc.com/
 Project-URL: Documentation, https://docs.deltaroboticsinc.com/
 Project-URL: Repository, https://github.com/Delta-Robotics-Inc/TF-Python-Serial
