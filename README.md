@@ -24,7 +24,7 @@ or you can install manually by downloading the files from our Github and running
 ```python
 import thermoflex as tf
 
-netlist = tf.discover([105])
+netlist = tf.discover([115])
 network1 = netlist[0]
 ```
 
@@ -92,7 +92,7 @@ session1 = session[0]
 
 From here, you can add commands to your command buffer. The commands are as follows.
 
-| Node Commands                        | Function                                                                                                                                  |
+| **Node Commands**                        | **Function**                                                                                                  |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | status()                             | Checks the status of the node and returns its status                                                                                      |
 | getStatus()                          | Returns the latest node status received                                                                                                   |
@@ -114,7 +114,7 @@ node0.enable(muscle1)
 
 The muscle objects also have their own commands that are passed to their commanding node.  These commands are as follows.
 
-| Muscle Command                   | Function                                                                                                                                  |
+| **Muscle Command**                   | **Function**                                                                                                                                  |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | changeMusclemos(*mosfetnum*:int) | Manually changes the mosfet number of the selected muscle. The mosfet number is set automatically when the muscle is assigned to a node;  |
 | setMode(conmode)                 | Sets the data type that a given muscle receives for its setSetpoint() command; conmode : (percent, volts, amps, ohms, train)              |

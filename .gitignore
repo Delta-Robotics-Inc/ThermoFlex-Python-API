@@ -3,5 +3,6 @@ asus-test-env/
 ThermoflexSessions/
 logdata.*
 ExampleSessions/
-python-serial/test/
-python-serial/scratch/
+test/
+scratch/
+communication/
