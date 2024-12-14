@@ -1,8 +1,8 @@
 test-env/
 asus-test-env/
 ThermoflexSessions/
-logdata.*
 ExampleSessions/
-test/
+devtest/
 scratch/
 communication/
+protoc-28.2-win64/

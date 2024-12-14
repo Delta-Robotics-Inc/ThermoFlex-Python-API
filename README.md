@@ -24,7 +24,7 @@ or you can install manually by downloading the files from our Github and running
 ```python
 import thermoflex as tf
 
-netlist = tf.discover([115])
+netlist = tf.discover()
 network1 = netlist[0]
 ```
 
