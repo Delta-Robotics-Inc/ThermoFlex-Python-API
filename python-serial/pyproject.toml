@@ -4,10 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thermoflex"
-version = "0.0.3"
-authors = [{name = "Marvin Stephens", email = "marvin.stephens44@yahoo.com"}{name = "Mark D", email = "mrk.d@delta.org"}]
-readme = "README.md"
+version = "1.0.0"
+authors = [{name = "Marvin S", email = "marvin@deltaroboticsinc.com"}, {name = "Mark D", email = "mark@deltaroboticsinc.com"} ]
+readme = "Getting Started.md"
 dependencies = ['pyserial == 3.5','protobuf == 5.28.3', 'pandas == 2.2.3']
-description = "This is the repository for the thermoflex muscle by Delta Robotics"
+description = "This is the library for controlling the ThermoFlex muscle system by Delta Robotics"
 keywords = ["thermoflex" , "Delta", "Delta Robotics"]
 requires-python = ">= 3.8"
+
+[project.urls]
+
+Homepage = "https://www.deltaroboticsinc.com/"
+Documentation = "https://docs.deltaroboticsinc.com/"
+Repository = "https://github.com/Delta-Robotics-Inc/TF-Python-Serial"

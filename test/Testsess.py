@@ -3,10 +3,10 @@ import time as t
 #write tests that send commands
 
 
-network = tf.discover([105]) #input the product id and returns a list of nodes available
-node0 = network[0].node0
+network = tf.discover() #input the product id and returns a list of nodes available
+node0 = network[0].self_node
 network[0].refreshDevices()
-muscle = tf.devices.muscle
+muscle = tf.devices.Muscle
 # Example of how to characaterize muscles. 
 muscle1 = muscle(idnum = 0, resist= 300, diam= 2, length= 150)
 muscle2 = muscle(idnum = 1, resist= 290, diam= 2, length= 145)
@@ -14,24 +14,18 @@ muscle2 = muscle(idnum = 1, resist= 290, diam= 2, length= 145)
 node0.setMuscle(0, muscle1) #takes the mosfet number muscle params to muscle
 node0.setMuscle(1, muscle2)
 node0.logstate["printlog"]=True
-#print(node0.logstate)
+#node0.logstate["filelog"]=True #sets filelogging to true
+node0.logstate["binarylog"]=True #sets the logpath and logging to true
+
 t.sleep(0.1)
 node0.status('compact')
-
-
-# Set output path and mode (Like Binary vs UTF-8)
-
-#node0.logstate["filelog"]=True #sets the logpath and logging to true
-#node0.logstate["dictlog"]=True #sets the logpath and logging to true
-''#sets the logpath and logging to true
-
 
 m_to_train = muscle1  # Just set to the muscle port that should be trained
 
 # Muscle setup
 m_to_train.setMode("percent")  # Train mode does not work yet.  This is the best way for now until we meet and discuss how train mode will work.
 
-m_to_train.setSetpoint(0.1)  # Dial this value in but start low!  Keep in mind that smoking should occur sometime near the end of the 50 seconds when this value is tuned in.
+m_to_train.setSetpoint(setpoint = 0.1)  # Dial this value in but start low!  Keep in mind that smoking should occur sometime near the end of the 50 seconds when this value is tuned in.
 
 # Specify training program wait values
 

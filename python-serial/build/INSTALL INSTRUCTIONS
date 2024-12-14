@@ -1,2 +1,0 @@
-copy the path to the .tar file in the dist folder of this directory. This is the $SRC
-From powershell, Type 'pip install $SRC'

@@ -103,7 +103,7 @@ def parse_packet(data, packet_length):
         D.debug(DEBUG_LEVELS['ERROR'], "parse_packet", f"Error parsing packet: {e}")
         return None
 
-def deconst_response_packet(data):
+def deconst_serial_response(data):
     response_type = ''
     response_dict = {}
     data = tfproto.NodeResponse.FromString(data)
@@ -158,7 +158,7 @@ def deconst_response_packet(data):
             response_dict['control_mode'] = data.sma_status_compact.mode
             response_dict['pwm_out'] = data.sma_status_compact.output_pwm
             response_dict['load_amps'] = data.sma_status_compact.load_amps
-            response_dict['laod_voltdrop'] = data.sma_status_compact.load_vdrop
+            response_dict['load_voltdrop'] = data.sma_status_compact.load_vdrop
             response_dict['load_ohms'] = data.sma_status_compact.load_mohms 
         
         elif data.HasField('sma_status_dump'): 
@@ -172,7 +172,7 @@ def deconst_response_packet(data):
             response_dict['load_voltdrop'] = data.sma_status_dump.compact_status.load_vdrop
             response_dict['load_ohms'] = data.sma_status_dump.compact_status.load_mohms 
             response_dict['SMA_default_mode'] = data.sma_status_dump.loaded_settings.default_mode
-            response_dict['SMA_deafult_setpoint'] = data.sma_status_dump.loaded_settings.default_setpoint
+            response_dict['SMA_default_setpoint'] = data.sma_status_dump.loaded_settings.default_setpoint
             response_dict['SMA_rcontrol_kp'] = data.sma_status_dump.loaded_settings.rcntrl_kp
             response_dict['SMA_rcontrol_ki'] = data.sma_status_dump.loaded_settings.rcntrl_ki
             response_dict['SMA_rcontrol_kd'] = data.sma_status_dump.loaded_settings.rcntrl_kd
@@ -368,6 +368,6 @@ class LogMessage: #object for log messages
     
     def __init__(self, msg_type, gen_msg):
         self.message_type = msg_type
-        self.message_address = [0x00,0x00,0x00]
+        self.message_address = 0
         self.generated_message = gen_msg
         
