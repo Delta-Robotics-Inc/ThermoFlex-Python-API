@@ -1,3 +1,5 @@
+# Getting Started
+
 #### System Requirements
 
 - Python 3.12 or greater
