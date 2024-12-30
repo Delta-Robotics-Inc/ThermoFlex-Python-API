@@ -1,5 +1,5 @@
 from .tools.nodeserial import serial_thread, send_command
-from .tools.packet import command_t, deconst_response_packet
+from .tools.packet import command_t, deconst_serial_response
 from .devices import Node, Muscle
 from .sessions import Session
 from .tools.debug import Debugger as D, DEBUG_LEVELS
@@ -57,6 +57,13 @@ class NodeNet:
                 self.node_list.remove(node)
 
     def getDevice(self, node_id):
+        # Helper function to convert an integer to a byte list
+        def int_to_bytearray(n):
+            return list(n.to_bytes((n.bit_length() + 7) // 8, byteorder='big')) or [0]
+
+        # If node_id is an integer, convert it to a byte list
+        if isinstance(node_id, int):
+            node_id = int_to_bytearray(node_id)
         
         for x in self.node_list:
             D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Checking node: {x.node_id} with {node_id}")
@@ -112,7 +119,7 @@ class NodeNet:
     def disperse(self, rec_packet):
         D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersing packet: {rec_packet}")
         packet_node_id = rec_packet['sender_id']# Node ID is stored as a list of integers
-        response = deconst_response_packet(rec_packet['payload'])
+        response = deconst_serial_response(rec_packet['payload'])
         matching_node = None
 
         # Check if the node already exists in the network
@@ -120,7 +127,7 @@ class NodeNet:
             if node.node_id == packet_node_id:
                 matching_node = node
                 D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to existing node with id: {node.node_id}")
-                return
+                break
             
         # If the node does not exist in the network, add it
         if(matching_node == None):  

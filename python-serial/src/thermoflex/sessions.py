@@ -6,7 +6,7 @@ import os
 import shutil as sh
 from datetime import datetime as dt
 from .tools.nodeserial import threaded, stop_threads_flag
-from .tools.packet import deconst_response_packet, DATATYPE, LogMessage
+from .tools.packet import deconst_serial_response, DATATYPE, LogMessage
 from .tools.debug import Debugger as D, DEBUG_LEVELS
 from .devices import Node
 base_path = os.getcwd().replace("\\","/") + '/ThermoflexSessions' #set base filepath
@@ -51,7 +51,7 @@ class Logger:
                     readlog = f'{logtime} {logmsg.message_type} {logmsg.message_address} {logmsg.generated_message}'    
                
                     node = None
-                    if not logmsg.message_address == [0x00,0x00,0x00]: # checks for sender id    
+                    if not logmsg.message_address == 0: # checks for sender id    
                         for nood in Node.nodel:
                             if nood.node_id == logmsg.message_address:
                                 node = nood
@@ -131,12 +131,16 @@ class Session:
         logmsg = None
         if logtype == 0:
             logmsg = LogMessage('SENT',cmd.construct)
-            logmsg.message_address =  cmd.destnode.node_id
+            sender_id_int = int.from_bytes(cmd.destnode.node_id, byteorder='big')
+            logmsg.message_address = sender_id_int
         elif logtype == 1:
             logmsg = LogMessage('RECEIVED', cmd['payload']) # creates log message object
-            logmsg.message_address = cmd['sender_id']
+            sender_id_int = int.from_bytes(cmd['sender_id'], byteorder='big')
+            logmsg.message_address = sender_id_int
         elif logtype == 2:
+            sender_id_int = 0 #int.from_bytes(cmd['sender_id'], byteorder='big')
             logmsg = LogMessage('SERIAL_DEBUG', cmd)
+            logmsg.message_address = sender_id_int
         elif logtype == 3:
             logmsg = LogMessage(cmd[0],cmd[1]) #for DEBUG LOGGING
         else:
