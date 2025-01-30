@@ -85,7 +85,10 @@ class Logger:
                     pass  
 
         finally:
-            stop_threads_flag.clear()
+            if stop_threads_flag.is_set():
+                return
+            else:
+                stop_threads_flag.clear()
     
     def logging(self, message:LogMessage): #takes session log data and sends to log
             

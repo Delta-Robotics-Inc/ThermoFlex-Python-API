@@ -44,6 +44,10 @@ class Debugger:
             if Debugger.DEBUG_PRINT == True: 
                 print(message, end='')
             if Debugger.DEBUG_LOG == True: Debugger.DEBUG_SESSION.logging((level,message.replace('\n','|')),3)
+    
+    def thread_checker(thread):
+        if thread.is_alive(): print("{thread.getName()} is still alive")
+        else: print("{thread.getName()} is dead")
 
 
 

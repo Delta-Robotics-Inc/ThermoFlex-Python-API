@@ -267,7 +267,7 @@ class Node:
                     self.net.command_buff.append(command)
                     D.debug(DEBUG_LEVELS['DEBUG'], "muscle", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
       
-    def setSetpoint(self, conmode, device, setpoint:float):   #takes muscle port and 
+    def setSetpoint(self, setpoint:float, conmode, device):   #takes muscle port and 
         D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Setting setpoint for {device} to {setpoint}")
         #TODO: call muscle port number
         if type(device) == int:
@@ -428,7 +428,7 @@ class Muscle:
         elif out == 1:
             return mode
            
-    def setSetpoint(self, conmode = None, setpoint:float = None):   #takes given setpoint and sends relevant information to node
+    def setSetpoint(self, setpoint:float = None, conmode = None):   #takes given setpoint and sends relevant information to node
         #TODO connode
         if conmode:
             mode = self.setMode(conmode, 1)        

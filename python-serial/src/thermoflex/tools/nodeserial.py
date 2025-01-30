@@ -17,6 +17,7 @@ def threaded(func):
     def wrapper(*args, **kwargs):
         thread = thr.Thread(target=func, args=args, kwargs = kwargs)
         thread.start()
+        #print(thread.getName(),func) # prints thread name and function type
         threadlist.append(thread)
         return thread
 
@@ -62,7 +63,6 @@ class ReceptionState(Enum):
     WAIT_FOR_START_BYTE = 1
     READ_LENGTH = 2
     READ_PACKET = 3
-
 
 # Receives data from a Node Network's serial port and processes packets
 class Receiver:
@@ -136,6 +136,8 @@ class Receiver:
                         self.packetLength = 0
         return None
 
+def heartbeat(network):
+    network
 @threaded
 def serial_thread(network):
 
@@ -169,4 +171,4 @@ def serial_thread(network):
 
         
 for th in threadlist:
-        th.join()
+    th.join()

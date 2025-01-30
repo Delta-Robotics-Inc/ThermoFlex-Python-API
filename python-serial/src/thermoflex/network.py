@@ -1,10 +1,11 @@
-from .tools.nodeserial import serial_thread, send_command
+from .tools.nodeserial import serial_thread, send_command, heartbeat, stop_threads_flag
 from .tools.packet import command_t, deconst_serial_response
 from .devices import Node, Muscle
 from .sessions import Session
 from .tools.debug import Debugger as D, DEBUG_LEVELS
 import serial as s
 import time as t
+import threading as thr
 #TODO: id address pull from network
 def sess(net):#create session if one does not exist
     if Session.sescount>0:
@@ -30,6 +31,7 @@ class NodeNet:
         self.debug_name = f"NodeNet {self.idnum}" # Name for debugging purposes
         self.refreshDevices()
         self.start_serial()
+        self.pulse()
         
     def refreshDevices(self):
         '''
@@ -55,6 +57,12 @@ class NodeNet:
         for node in self.node_list:
             if node.node_id == node_id:
                 self.node_list.remove(node)
+    
+    def pulse(self):
+        while True:
+            thr.Timer(2,heartbeat(self))
+            if stop_threads_flag.is_set():
+                break
 
     def getDevice(self, node_id):
         # Helper function to convert an integer to a byte list

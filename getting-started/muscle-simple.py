@@ -35,7 +35,7 @@ muscle.setEnable(True)
 
 tf.delay(5)  # Increase if needed but be careful!  There is no safegaurd to prevent the muscle from overheating
 
-muscle.disableAll()
+node.disableAll()
 
 time.sleep(1)
 tf.endAll()

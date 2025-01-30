@@ -1,6 +1,6 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.2
 Name: thermoflex
-Version: 0.0.1
+Version: 1.0.0
 Summary: This is the library for controlling the ThermoFlex muscle system by Delta Robotics
 Author-email: Marvin S <marvin@deltaroboticsinc.com>, Mark D <mark@deltaroboticsinc.com>
 Project-URL: Homepage, https://www.deltaroboticsinc.com/
@@ -13,6 +13,8 @@ License-File: LICENSE.txt
 Requires-Dist: pyserial==3.5
 Requires-Dist: protobuf==5.28.3
 Requires-Dist: pandas==2.2.3
+
+# Getting  Started #
 
 #### System Requirements
 
