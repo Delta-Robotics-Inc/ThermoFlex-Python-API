@@ -42,7 +42,7 @@ def send_command_str(command, network): #TODO: construct packet in commmand, rem
     # Use the debug function to print the command packet to the terminal
     D.debug(DEBUG_LEVELS['INFO'], "send_command_str", f'\nPort: {port}')
     D.debug(DEBUG_LEVELS['INFO'], "send_command_str", f'Command Packet: {command.packet}')
-    print(f'{command_final}\n')
+    D.debug(DEBUG_LEVELS['INFO'], f'{command_final}\n')
     
     t.sleep(0.05)
 
