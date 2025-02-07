@@ -427,7 +427,8 @@ class Muscle:
             self.masternode.setMode(mode, muscle)
         elif out == 1:
             return mode
-           
+    
+    # TODO take setpoint first and then make conmode optional
     def setSetpoint(self, conmode = None, setpoint:float = None):   #takes given setpoint and sends relevant information to node
         #TODO connode
         if conmode:

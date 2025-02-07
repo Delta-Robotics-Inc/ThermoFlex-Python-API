@@ -30,12 +30,18 @@ node.setMuscle(0, muscle)  # Assign the muscle to the Node at port 0
 
 # Move the Muscle
 muscle.setMode("percent")
-muscle.setSetpoint(0.1)
+muscle.setSetpoint("percent", 0.1)
 muscle.setEnable(True)
+tf.delay(2)
+muscle.setSetpoint("percent", 0.3)
+tf.delay(2)
+muscle.setSetpoint("percent", 0.4)
+tf.delay(2)
+muscle.setSetpoint("percent", 0.5)
 
-tf.delay(5)  # Increase if needed but be careful!  There is no safegaurd to prevent the muscle from overheating
+tf.delay(15)  # Increase if needed but be careful!  There is no safegaurd to prevent the muscle from overheating
 
-muscle.disableAll()
+node.disableAll()
 
 time.sleep(1)
 tf.endAll()
