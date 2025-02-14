@@ -2,13 +2,14 @@ import sys
 import serial as s
 import time as t
 import struct as st
-from .packet import parse_packet, STARTBYTE
+from .packet import parse_packet, command_t, STARTBYTE
 from .debug import Debugger as D, DEBUG_LEVELS
 import threading as thr
 from enum import Enum
 
 
 stop_threads_flag = thr.Event() # Flag to stop all threads when the thread is ready to close
+
 
 def threaded(func):
     global threadlist
@@ -22,6 +23,7 @@ def threaded(func):
         return thread
 
     return wrapper
+   
 
 def send_command_str(command, network): #TODO: construct packet in commmand, remove send_command options
     '''
@@ -58,6 +60,54 @@ def send_command(command, network):
     port.write(bytearray(command.packet))
     t.sleep(0.05)      
 
+class Pulse:
+    
+    def __init__(self, node, type = "receive"):
+        self.node = node
+        self.node_id = node.node_id
+        self.time = int(t.time())
+        if type == "send":
+            self.timeout = 2.0
+            self.compulse()
+        elif type == "receive":
+            self.timeout = 3.0
+            self.nodepulse()
+
+    def reset(self):
+        self.time = int(t.time())
+
+    def heartbeat(self):
+        network = self.node.net
+        beat = command_t(self.node, "heartbeat", [])
+        send_command(beat,network)
+    
+    @threaded
+    def compulse(self):
+        starttime = self.time
+        while True:
+            try:    
+                curtime = int(t.time())
+                if curtime-starttime >= self.timeout:
+                    self.heartbeat()
+                    self.reset()
+                else:
+                    continue
+            except s.SerialTimeoutException:
+                continue
+            except s.SerialException:
+                continue
+    
+    @threaded
+    def nodepulse(self):
+        starttime = self.time
+        while True:
+            curtime = int(t.time())
+            if curtime-starttime >= self.timeout:
+                self.node.endself()
+            else:
+                continue
+    
+        
 # States for the receiver state machine
 class ReceptionState(Enum):
     WAIT_FOR_START_BYTE = 1
@@ -136,8 +186,6 @@ class Receiver:
                         self.packetLength = 0
         return None
 
-def heartbeat(network):
-    network
 @threaded
 def serial_thread(network):
 
@@ -161,11 +209,14 @@ def serial_thread(network):
             D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Sending command to Network {network.idnum}")
             #print(cmd.construct) #DEBUG
             send_command(cmd,network)
+            network.pulsereset(cmd)
             network.sess.logging(cmd,0)
             del network.command_buff[0]
         except IndexError:
             #print('No data') #DEBUG
             pass
+        except s.SerialException:
+            stop_threads_flag.set()
 
     stop_threads_flag.clear() # Clear the flag to signal that the thread has ended
 

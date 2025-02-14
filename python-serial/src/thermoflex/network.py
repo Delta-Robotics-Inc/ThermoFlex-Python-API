@@ -1,4 +1,4 @@
-from .tools.nodeserial import serial_thread, send_command, heartbeat, stop_threads_flag
+from .tools.nodeserial import serial_thread, send_command, Pulse, stop_threads_flag
 from .tools.packet import command_t, deconst_serial_response
 from .devices import Node, Muscle
 from .sessions import Session
@@ -31,7 +31,7 @@ class NodeNet:
         self.debug_name = f"NodeNet {self.idnum}" # Name for debugging purposes
         self.refreshDevices()
         self.start_serial()
-        self.pulse()
+        self.pulse = Pulse(self.broadcast_node, "send")
         
     def refreshDevices(self):
         '''
@@ -57,12 +57,7 @@ class NodeNet:
         for node in self.node_list:
             if node.node_id == node_id:
                 self.node_list.remove(node)
-    
-    def pulse(self):
-        while True:
-            thr.Timer(2,heartbeat(self))
-            if stop_threads_flag.is_set():
-                break
+                node.endself()
 
     def getDevice(self, node_id):
         # Helper function to convert an integer to a byte list
@@ -143,9 +138,14 @@ class NodeNet:
             D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to new node with id: {packet_node_id}")
 
         # Disperse the response to the node
+        matching_node.pulse.reset()
+        
         if 'status' in response[0]:
             matching_node.updateStatus(response)
         else:
             matching_node.latest_resp = response[1]
 
         D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersed packet to node: {matching_node.node_id}")
+
+    def pulsereset(self, cmd):
+        cmd.destnode.pulse.reset()

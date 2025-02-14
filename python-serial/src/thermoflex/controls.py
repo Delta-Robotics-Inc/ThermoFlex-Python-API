@@ -114,7 +114,7 @@ def endAll():
             D.debug(DEBUG_LEVELS['WARNING'], "endAll", "Warning: Port not open but attempted to close")
             pass
         finally:
-            del node
+            node.endself()
     
     for net in NodeNet.netlist:
         del net

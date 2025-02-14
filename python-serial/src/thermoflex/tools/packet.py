@@ -206,6 +206,7 @@ class command_t:
                    "log-mode": [0x05, [int]], #log mode(subject to change)
 			       "configure": [0x06,[int,int]],
                    "silence":[0x07,[bool]],
+                   "heartbeat": [0xFE, []],
                    "reset": [0xFF, []]
 			       } 
     devicedef = ("all", "node","portall", "m1", "m2")
@@ -308,7 +309,9 @@ class command_t:
         Constructs the .proto command from command_t object. Returns bytes string.
         '''
         node_cmd = tfproto.NodeCommand()
-        if self.code == 0x01:
+        if self.code == 0xFE:
+            return ''
+        elif self.code == 0x01:
             if self.params[0] == True:
                 node_cmd.enable.device = self.get_device_code()
             elif self.params[0] == False:

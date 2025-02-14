@@ -4,8 +4,9 @@ Comments
 #TODO: add status parsing
 
 import time as t
+from threading import Event
 from .tools.packet import command_t
-from .tools.nodeserial import send_command, send_command_str, threaded
+from .tools.nodeserial import send_command, send_command_str, Pulse
 from .tools.debug import Debugger as D, DEBUG_LEVELS
 
 #arduino commands
@@ -55,6 +56,9 @@ class Node:
         self.muscle0 = Muscle(0, 0, 0, 0, self)
         self.muscle1 = Muscle(1, 0, 0, 0, self)
         self.muscles = {"0":self.muscle0, "1":self.muscle1}
+
+        #set Heartbeat
+        self.pulse = Pulse(self)
   
     def testMuscles(self, sendformat:int = 1):
         '''
@@ -361,7 +365,13 @@ class Node:
         for x in self.muscles.keys():
             command = command_t(self, SE, device = f'm{self.muscles[x].idnum+1}', params = [False] )
             self.net.command_buff.append(command)
-                                                             
+
+    def endself(self):
+        for m in self.muscles:
+            del m
+        Node.nodel.remove(self)
+        self.network.node_list.remove(self)
+        del self                                                             
 #---------------------------------------------------------------------------------------  
 
 class Muscle:
