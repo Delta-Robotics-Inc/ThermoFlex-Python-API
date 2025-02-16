@@ -1,12 +1,18 @@
-greater#### System Requirements
+
+
+# Thermoflex API
+
+
+#### System Requirements
 
 - Python 3.12 or greater
 - Pyserial 3.5 or greater
-## Introduction
 
-###### The Thermoflex muscle is a current activated artificial muscle that is designed to have a low profile usage and simple activation and deactivation sequence. The purpose of this library is 2-fold; to become the working backend of the Delta hardware application and to allow for open-source development of the Nitinol muscle.
+### Introduction
 
-## Download and Installation
+The Thermoflex muscle is a current activated artificial muscle that is designed to have a low profile usage and simple activation and deactivation sequence. The purpose of this library is 2-fold; to become the working backend of the Delta hardware application and to allow for open-source development of the Nitinol muscle.
+
+### Download and Installation
 
 
 To install our software, you can use the pip and package methods
@@ -17,7 +23,7 @@ or you can install manually by downloading the files from our Github release pag
 
 [Github](https://github.com/Delta-Robotics-Inc/ThermoFlex-Python-API/releases)
 
-## Launch and Use
+### Launch and Use
 
  Import the thermoflex library and use .discover() to find our product. 
  
@@ -87,7 +93,7 @@ pip install -e $SRC
 ```
 with $SRC being the path to the [python-serial](python-serial/) folder. This will install the files as a test library.
 
-# Program Commands
+## Program Commands
 
 | **Program Commands**  | **Function**                                                            |
 | --------------------- | ----------------------------------------------------------------------- |
@@ -100,7 +106,7 @@ with $SRC being the path to the [python-serial](python-serial/) folder. This wil
 
 [Program Glossary](/docs/Thermoflex%20Glossary.md#program)
 
-# NodeNet Commands
+## NodeNet Commands
 
 | **NodeNet Commands** | **Function**                                                                            |
 | -------------------- | --------------------------------------------------------------------------------------- |
@@ -114,7 +120,7 @@ with $SRC being the path to the [python-serial](python-serial/) folder. This wil
 
 [NodeNet Glossary](/docs/Thermoflex%20Glossary.md#nodenet)
 
-# Node Commands
+## Node Commands
 
 | **Node Commands**                        | **Function**                                                                                                  |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -133,7 +139,7 @@ with $SRC being the path to the [python-serial](python-serial/) folder. This wil
 
 [Node Glossary](/docs/Thermoflex%20Glossary.md#node)
 
-# Muscle Commands
+## Muscle Commands
 
 | **Muscle Command**                   | **Function**                                                                                                                                  |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
