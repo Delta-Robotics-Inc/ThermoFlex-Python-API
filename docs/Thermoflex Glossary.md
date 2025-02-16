@@ -1,4 +1,8 @@
 
+# Glossary
+
+## Program
+
 | **Program Commands**  | **Function**                                                            |
 | --------------------- | ----------------------------------------------------------------------- |
 | discover(*prodid*)    | finds connected nodes from the product id (*prodid*)                    |
@@ -7,6 +11,8 @@
 | delay(*time*)         | continuously calls update on all of the networks until *time* is called |
 | endsession(*session*) | Ends and deletes the *session*                                          |
 | endAll()              | Ends and deletes all sessions, nodes, and networks                      |
+
+## NodeNet
 
 | **NodeNet Commands** | **Function**                                                                            |
 | -------------------- | --------------------------------------------------------------------------------------- |
@@ -29,6 +35,8 @@
 | .command_buff          | the command buffer for sending commands to the NodeNet for distribution                                                   |
 | .sess                  | the Session object associated with the node                                                                               |
 | .debug_name            | the NodeNet's debug name; used for debugging purposes                                                                     |
+
+## Node
 
 | **Node Commands**                    | **Function**                                                                                                                              |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -64,6 +72,8 @@
 | .latest_response    | latest response from the node.                                                 |
 | .bufflist           | buffer list for commands                                                       |
 | .lastcmd            | the last command sent                                                          |
+
+## Muscle
 
 | **Muscle Command**                   | **Function**                                                                                                                                  |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |

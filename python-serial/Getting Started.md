@@ -19,11 +19,12 @@ Install the thermoflex library. You can do this 3 different ways.
     pip install thermoflex
     ```
     
-2. From the thermoflex repository, download the python-serial folder,cd to the build folder, and type this command.
+2. From the thermoflex repository, download the [python-serial](https://github.com/Delta-Robotics-Inc/ThermoFlex-Python-API/tree/main/python-serial) folder,cd to the build folder, and type this command.
     
     ```bash
     pip install thermoflex-0.0.3.tar.gz 
     ```
+
     
 3. After downloading the thermoflex repository, cd into the folder and type this command
     
@@ -33,7 +34,7 @@ Install the thermoflex library. You can do this 3 different ways.
 
 After installing the library, connect the Muscle to the Node and the Node to the computer. 
 
-There is an example python script muscle-simple.py in the getting started folder to help you understand the flow of the system.
+There is an example python script [muscle-simple.py](/getting-started/muscle-simple.py) in the getting started folder to help you understand the flow of the system.
 Simply run the file and the muscle should contract, update for 5 seconds, and then release. Then the program will end.
 
-The README in the thermoflex repository has a glossary containing all of the working commands.
+There is a [Glossary](https://github.com/Delta-Robotics-Inc/ThermoFlex-Python-API/blob/main/docs/Thermoflex%20Glossary.md) of the working commands and features in the library.
