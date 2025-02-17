@@ -1,23 +1,29 @@
+
+
+# Thermoflex API
+
+
 #### System Requirements
 
 - Python 3.12 or greater
 - Pyserial 3.5 or greater
-## Introduction
 
-###### The Thermoflex muscle is a current activated artificial muscle that is designed to have a low profile usage and simple activation and deactivation sequence. The purpose of this library is 2-fold; to become the working backend of the Delta hardware application and to allow for open-source development of the Nitinol muscle.
+### Introduction
 
-## Download and Installation
+The Thermoflex muscle is a current activated artificial muscle that is designed to have a low profile usage and simple activation and deactivation sequence. The purpose of this library is 2-fold; to become the working backend of the Delta hardware application and to allow for open-source development of the Nitinol muscle.
+
+### Download and Installation
 
 
 To install our software, you can use the pip and package methods
 
 `pip install thermoflex`
 
-or you can install manually by downloading the files from our Github and running the tfsetup.py file. Be sure that you are have the setuptools package installed if you choose to install manually.
+or you can install manually by downloading the files from our Github release page and installing the package with pip.
 
-( add Github site and link)
+[Github](https://github.com/Delta-Robotics-Inc/ThermoFlex-Python-API/releases)
 
-## Launch and Use
+### Launch and Use
 
  Import the thermoflex library and use .discover() to find our product. 
  
@@ -28,24 +34,24 @@ netlist = tf.discover()
 network1 = netlist[0]
 ```
 
-This will return a list of NodeNet-objects. Each NodeNet contains a list of Node-objects connected at initialization as well as a broadcast Node and a self Node device. From here you will be able to assign nodes to variables using the .getDevice() command.
+This will return a list of [NodeNet](#nodenet-commands)-objects. Each [NodeNet](#nodenet-commands) contains a list of [Node](#node-commands)-objects connected at initialization as well as a broadcast [Node](#node-commands) and a self [Node](#node-commands) device. From here you will be able to assign nodes to variables using the .getDevice() command.
 
 ``` Python
 node0 = network1.node_list[0]
 ```
 
-You can also assign the broadcast node and self node by calling a NodeNet's .broadcast_node and .self_node. 
+You can also assign the broadcast node and self node by calling a [NodeNet](#nodenet-commands)'s .broadcast_node and .self_node. 
 
 ``` Python
 node_b = network1.broadcast_node
 node_s = network1.self_node
 ```
 
-Once you have your connected node bound, you can call its status, reset and logging commands. To use the muscles, you need to create Muscle objects
-(see Node Methods*hyperlink)
+Once you have your connected node bound, you can call its status, reset and logging commands. To use the muscles, you need to create [Muscle](#muscle-commands) objects
 
 
-To create Muscle-class objects, start by calling tf.muscle(). This is where you need input your *idnum*, *resistance*, *length*, and *diameter* values if you have them. 
+
+To create [Muscle](#muscle-commands)-class objects, start by calling tf.muscle(). This is where you need input your *idnum*, *resistance*, *length*, and *diameter* values if you have them. 
 
 
 ``` Python
@@ -53,7 +59,7 @@ muscle1 = tf.muscle(idnum = 0, resist= 300, diam= 2, length= 150)
 muscle2 = tf.muscle(idnum = 1, resist= 290, diam= 2, length= 145)
 ```
 
-Note that the *idnum* field is the only field that is neccesary for creating the Muscle-object.
+Note that the *idnum* field is the only field that is neccesary for creating the [Muscle](#muscle-commands)-object.
 
 Next, assign the muscle objects to a node object by calling the .setMuscle() command. This command takes the identification number and the muscle object as arguments
 
@@ -69,7 +75,25 @@ sessionl = tf.Session.sessionl
 session1 = session[0]
 ```
 
+From here, you can add commands to your command buffer. [Node Commands](#node-commands)
 
+These commands should be in the format,
+
+```Python
+node0.enable(muscle1)
+```
+
+The muscle objects also have their own commands that are passed to their commanding node.[Muscle Commands](#muscle-commands)
+
+Developer install instructions
+
+for testing purposes, use the command
+```
+pip install -e $SRC
+```
+with $SRC being the path to the [python-serial](python-serial/) folder. This will install the files as a test library.
+
+## Program Commands
 
 | **Program Commands**  | **Function**                                                            |
 | --------------------- | ----------------------------------------------------------------------- |
@@ -79,6 +103,10 @@ session1 = session[0]
 | delay(*time*)         | continuously calls update on all of the networks until *time* is called |
 | endsession(*session*) | Ends and deletes the *session*                                          |
 | endAll()              | Ends and deletes all sessions, nodes, and networks                      |
+
+[Program Glossary](/docs/Thermoflex%20Glossary.md#program)
+
+## NodeNet Commands
 
 | **NodeNet Commands** | **Function**                                                                            |
 | -------------------- | --------------------------------------------------------------------------------------- |
@@ -90,7 +118,9 @@ session1 = session[0]
 | closePort()          | Closes the port associated with the network                                             |
 | start_serial()       | starts the serial loop for sending and receiving commands. started upon initialization. |
 
-From here, you can add commands to your command buffer. The commands are as follows.
+[NodeNet Glossary](/docs/Thermoflex%20Glossary.md#nodenet)
+
+## Node Commands
 
 | **Node Commands**                        | **Function**                                                                                                  |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -106,13 +136,10 @@ From here, you can add commands to your command buffer. The commands are as foll
 | disable(muscle)                      | Disables the selected muscle : (m1,m2,...,m*n*)                                                                                           |
 | disableAll                           | Disables all connected muscles of the node                                                                                                |
 | update                               | Sends and receives the packets to "update" the node state                                                                                 |
-These commands should be in the format,
 
-```Python
-node0.enable(muscle1)
-```
+[Node Glossary](/docs/Thermoflex%20Glossary.md#node)
 
-The muscle objects also have their own commands that are passed to their commanding node.  These commands are as follows.
+## Muscle Commands
 
 | **Muscle Command**                   | **Function**                                                                                                                                  |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -121,9 +148,4 @@ The muscle objects also have their own commands that are passed to their command
 | setSetpoint(setpoint:float)      | Sets the setpoint of the muscle at the node.                                                                                              |
 | setEnable(bool)                  | Sets the enable status of the muscle in the node.                                                                                         |
 
-Developer install instructions
-for testing purposes, use the command
-```
-pip install -e $SRC
-```
-with $SRC being the path to the python-serial folder. This will install the files as a test library.
+[Muscle](/docs/Thermoflex%20Glossary.md#muscle)
