@@ -1,5 +1,6 @@
 test-env/
-asus-test-env/
+asus-venv/
+asus-venv311/
 ThermoflexSessions/
 ExampleSessions/
 devtest/
