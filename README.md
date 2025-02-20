@@ -1,19 +1,23 @@
 #### System Requirements
 
-- Python 3.12 or greater
-- Pyserial 3.5 or greater
+- [Python 3.12 or greater](https://www.python.org/)
+- [Pyserial 3.5 or greater](https://pyserial.readthedocs.io/en/latest/pyserial.html)
+
+
 ## Introduction
 
-###### The Thermoflex muscle is a current activated artificial muscle that is designed to have a low profile usage and simple activation and deactivation sequence. The purpose of this library is 2-fold; to become the working backend of the Delta hardware application and to allow for open-source development of the Nitinol muscle.
+The Thermoflex muscle is a current activated artificial muscle that is designed to have a low profile usage and simple activation and deactivation sequence. The purpose of this library is 2-fold; to become the working backend of the Delta hardware application and to allow for open-source development of the Nitinol muscle.
 
 ## Download and Installation
 
 
-To install our software, you can use the pip and package methods
+To install our software, the most common method is through pip:
 
-`pip install thermoflex`
+```bash
+pip install thermoflex
+```
 
-or you can install manually by downloading the files from our Github and running the tfsetup.py file. Be sure that you are have the setuptools package installed if you choose to install manually.
+You can also install manually by downloading the files from our Github and running the `tfsetup.py` file. Be sure that you are have the setuptools package installed if you choose to install manually.
 
 ( add Github site and link)
 
