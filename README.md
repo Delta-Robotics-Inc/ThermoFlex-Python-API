@@ -96,13 +96,6 @@ node0.enable(muscle1)
 
 The muscle objects also have their own commands that are passed to their commanding node.[Muscle Commands](#muscle-commands)
 
-Developer install instructions
-
-for testing purposes, use the command
-```
-pip install -e $SRC
-```
-with $SRC being the path to the [python-serial](python-serial/) folder. This will install the files as a test library.
 
 ## Program Commands
 
