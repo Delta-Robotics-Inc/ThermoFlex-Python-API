@@ -7,13 +7,12 @@ from .debug import Debugger as D, DEBUG_LEVELS
 import threading as thr
 from enum import Enum
 
+# Define the global thread list
+threadlist = []
 
 stop_threads_flag = thr.Event() # Flag to stop all threads when the thread is ready to close
 
 def threaded(func):
-    global threadlist
-    threadlist = []
-    
     def wrapper(*args, **kwargs):
         thread = thr.Thread(target=func, args=args, kwargs = kwargs)
         thread.start()
@@ -75,6 +74,11 @@ class Receiver:
 
     def receive(self):
         port = self.network.arduino
+
+        # Check if port is still open before attempting to read
+        if not port.is_open:
+            return None
+
         #try:
         if port.in_waiting > 0:
             D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"\nReading incoming data from network {self.network.idnum}:")
@@ -168,5 +172,5 @@ def serial_thread(network):
     stop_threads_flag.clear() # Clear the flag to signal that the thread has ended
 
         
-for th in threadlist:
-        th.join()
+# for th in threadlist:
+#         th.join()

@@ -85,7 +85,8 @@ class Logger:
                     pass  
 
         finally:
-            stop_threads_flag.clear()
+            # stop_threads_flag.clear()
+            pass
     
     def logging(self, message:LogMessage): #takes session log data and sends to log
             
@@ -125,11 +126,12 @@ class Session:
     def end(self): #ends the session
         try:
             sh.copytree(f'{self.environment}/logs' , f'{base_path}/session{self.id}log', dirs_exist_ok = True)
-            os.remove(self.environment)
+            sh.rmtree(self.environment)
         except PermissionError:
             print('Permission Error: Cannot remove session directory')
         except Exception as e:
             print(f'Error: {e}')
+            raise
     
     def logging(self,cmd, logtype:int): #creates the LogMessage object with the available log data
         #print(cmd,tp)   #DEBUG
