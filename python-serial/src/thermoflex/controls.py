@@ -106,11 +106,13 @@ def updatenet(network:object): #choose which node to update and the delay
     network.refreshDevices()
         
 def delay(time):
-    
-    timer(time)
-    while timeleft>0:
+    global timeleft
+    timeleft = time
+    while timeleft > 0:
+        timeleft -= 1
         for net in NodeNet.netlist:
             updatenet(net)
+        t.sleep(1)
         
 def endsession(session:object):
     session.end()
