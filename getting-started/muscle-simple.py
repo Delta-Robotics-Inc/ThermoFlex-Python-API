@@ -45,5 +45,5 @@ tf.delay(4)  # Increase if needed but be careful!  There is no safegaurd to prev
 
 node.disableAll()
 
-time.sleep(1)
+tf.delay(1)
 tf.endAll()

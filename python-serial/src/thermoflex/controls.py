@@ -7,10 +7,9 @@ from .tools.debug import Debugger as D, DEBUG_LEVELS
 import serial as s
 import serial.tools.list_ports as stl
 import time as t
+import sys
 import platform
 import os
-import grp
-import sys
 import threading
 prod = [105] # Product id list
 
@@ -23,15 +22,13 @@ def set_debug_level(level):
 #TODO: put a rediscover in discover, have discover check for existing serial numbers      
 
 # Check permissions for Linux and warn the user if they are incorrectly set
-import platform
-import os
-import grp
 
 def check_serial_permissions():
     if platform.system() == "Linux":
         YELLOW = "\033[33m"
         BOLD = "\033[1m"
         RESET = "\033[0m"
+        import grp
         try:
             dialout_gid = grp.getgrnam("dialout").gr_gid
             user_groups = os.getgroups()
