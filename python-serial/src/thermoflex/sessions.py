@@ -1,5 +1,5 @@
 '''
-Comments
+Add shutoff switch
 '''
 from sys import getsizeof as getsize
 import os

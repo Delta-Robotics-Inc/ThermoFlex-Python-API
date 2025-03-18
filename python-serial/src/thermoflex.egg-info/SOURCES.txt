@@ -1,6 +1,5 @@
 Getting Started.md
 LICENSE.txt
-README.md
 pyproject.toml
 src/thermoflex/__init__.py
 src/thermoflex/controls.py

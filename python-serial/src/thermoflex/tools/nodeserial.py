@@ -10,7 +10,6 @@ from enum import Enum
 
 stop_threads_flag = thr.Event() # Flag to stop all threads when the thread is ready to close
 
-
 def threaded(func):
     global threadlist
     threadlist = []
@@ -25,7 +24,7 @@ def threaded(func):
     return wrapper
    
 
-def send_command_str(command, network): #TODO: construct packet in commmand, remove send_command options
+def send_command_str(command, network):
     '''
     
     Prints the command to a terminal. Used for test purposes.
@@ -46,7 +45,6 @@ def send_command_str(command, network): #TODO: construct packet in commmand, rem
     D.debug(DEBUG_LEVELS['INFO'], "send_command_str", f'\nPort: {port}')
     D.debug(DEBUG_LEVELS['INFO'], "send_command_str", f'Command Packet: {command.packet}')
     print(f'{command_final}\n')
-    
     t.sleep(0.05)
 
 def send_command(command, network):
@@ -58,56 +56,12 @@ def send_command(command, network):
     port = network.arduino
     D.debug(DEBUG_LEVELS['DEBUG'], "send_command", f'Sent Command{command.packet}')
     port.write(bytearray(command.packet))
-    t.sleep(0.05)      
+    t.sleep(0.05)
+    if not (command.destnode_id == [0xFF,0xFF,0xFF] or command.destnode_id == [0x00,0x00,0x01]):
+        msgconfirm = network.getDevice(command.destnode_id)
+        print(type(msgconfirm))
+        msgconfirm.msgsent = True     
 
-class Pulse:
-    
-    def __init__(self, node, type = "receive"):
-        self.node = node
-        self.node_id = node.node_id
-        self.time = int(t.time())
-        if type == "send":
-            self.timeout = 2.0
-            self.compulse()
-        elif type == "receive":
-            self.timeout = 3.0
-            self.nodepulse()
-
-    def reset(self):
-        self.time = int(t.time())
-
-    def heartbeat(self):
-        network = self.node.net
-        beat = command_t(self.node, "heartbeat", [])
-        send_command(beat,network)
-    
-    @threaded
-    def compulse(self):
-        starttime = self.time
-        while True:
-            try:    
-                curtime = int(t.time())
-                if curtime-starttime >= self.timeout:
-                    self.heartbeat()
-                    self.reset()
-                else:
-                    continue
-            except s.SerialTimeoutException:
-                continue
-            except s.SerialException:
-                continue
-    
-    @threaded
-    def nodepulse(self):
-        starttime = self.time
-        while True:
-            curtime = int(t.time())
-            if curtime-starttime >= self.timeout:
-                self.node.endself()
-            else:
-                continue
-    
-        
 # States for the receiver state machine
 class ReceptionState(Enum):
     WAIT_FOR_START_BYTE = 1
@@ -192,7 +146,10 @@ def serial_thread(network):
     receiver = Receiver(network)
 
     while True:
-        cmd_rec = receiver.receive()
+        try: 
+            cmd_rec = receiver.receive()
+        except s.SerialException:
+            break
 
         # Check if the stop_threads_flag has been set, if so, break the loop and end the thread
         if stop_threads_flag.is_set():
@@ -201,25 +158,25 @@ def serial_thread(network):
         if not cmd_rec:
             pass
         else:
-            network.disperse(cmd_rec)
+            network.disperse(cmd_rec) #TODO: Node Dispersal needs to be external?
+            #network.rec_cmd_buff.append(cmd_rec)
             network.sess.logging(cmd_rec,1)
 
         try:
             cmd = network.command_buff[0]
             D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Sending command to Network {network.idnum}")
             #print(cmd.construct) #DEBUG
-            send_command(cmd,network)
-            network.pulsereset(cmd)
+            send_command(cmd,network) #command sent flag
             network.sess.logging(cmd,0)
             del network.command_buff[0]
         except IndexError:
-            #print('No data') #DEBUG
-            pass
+            D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"No data to send to Network {network.idnum}")
         except s.SerialException:
             stop_threads_flag.set()
 
     stop_threads_flag.clear() # Clear the flag to signal that the thread has ended
 
-        
+
+         
 for th in threadlist:
     th.join()

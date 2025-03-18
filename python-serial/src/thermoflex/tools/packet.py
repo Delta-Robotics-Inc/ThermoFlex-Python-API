@@ -234,6 +234,7 @@ class command_t:
             raise ValueError("Incorrect arguments for this command") 
         #packet construction
         self.destnode = node
+        self.destnode_id = node.node_id
         self.construct = self.sConstruct()
         self.length = packet_size(self.construct)
         self.type = IDTYPE
@@ -310,7 +311,7 @@ class command_t:
         '''
         node_cmd = tfproto.NodeCommand()
         if self.code == 0xFE:
-            return ''
+            return b''
         elif self.code == 0x01:
             if self.params[0] == True:
                 node_cmd.enable.device = self.get_device_code()
@@ -343,7 +344,6 @@ class command_t:
         return node_cmd.SerializeToString()
 
     def packet_construction(self):
-        
         
         packet = [PROTOVER,IDTYPE,IDTYPE]
         plength = packet_size(self.construct)

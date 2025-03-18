@@ -2,8 +2,15 @@ import thermoflex as tf
 from threading import Timer
 import time as t
 network = tf.discover()
+tf.Debugger.DEBUG_PRINT = False
 net1 = network[0]
+t.sleep(2)
+print(network)
+print(net1)
+print(net1.node_list)
+
 while True:
-    print(net1.node_list)
-    t.sleep(4)
+    for net in network:
+        print(net1.node_list)
+        t.sleep(4)
     
