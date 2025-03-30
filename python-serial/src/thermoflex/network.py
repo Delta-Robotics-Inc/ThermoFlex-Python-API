@@ -1,3 +1,4 @@
+
 from .tools.nodeserial import serial_thread, send_command, stop_threads_flag, threaded
 from .tools.packet import command_t, deconst_serial_response
 from .devices import Node, Muscle
@@ -71,8 +72,12 @@ class NodeNet:
         self.rec_cmd_buff = []
         self.sess = sess(self)
         self.manager = manager(self)
-        self.openPort()
         self.debug_name = f"NodeNet {self.idnum}" # Name for debugging purposes
+        try:
+            self.openPort()
+        except:
+            print("NodeNet port failed to open.")
+            raise
         self.refreshDevices()
         self.start_serial()
         
@@ -131,20 +136,17 @@ class NodeNet:
         '''   
 
         try:
-            if self.arduino.is_open == True:
-                pass
-            elif self.arduino.is_open == False:
-                self.arduino.open()
-               
+            if self.arduino and self.arduino.is_open:
+                return self.arduino
         except AttributeError:
-            try:
-                self.arduino = s.Serial(port = self.port , baudrate=115200, timeout=1)
-                
-            except s.SerialException:
-                D.debug(DEBUG_LEVELS['ERROR'], self.debug_name, "Error: Serial not opened, check port status")
-        finally:
-            #print(self.port,self.arduino)
+            pass
+               
+        try:
+            self.arduino = s.Serial(port=self.port, baudrate=115200, timeout=1)
             return self.arduino
+        except s.SerialException as e:
+            D.debug(DEBUG_LEVELS['ERROR'], self.debug_name, f"Error: Serial not opened, check port status and user permissions. Exception: {e}")
+            raise
 
     def closePort(self):
         '''

@@ -1,0 +1,19 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
+{
+	"name": "Ubuntu with Python 3.11 and COM port passthrough",
+	"build": {
+	  "dockerfile": "../Dockerfile"
+	},
+	// Run `ls -l /dev/ttyS*` on your system (bash or WSL) and add the devices you want to use here
+	"runArgs": [
+		"--device=/dev/ttyS0",
+		"--device=/dev/ttyS1",
+		"--device=/dev/ttyS2",
+		"--device=/dev/ttyS3"
+	],
+	"forwardPorts": [],
+	"postCreateCommand": "sudo chmod a+rw /dev/ttyS*",
+	"remoteUser": "vscode"
+  }
+  

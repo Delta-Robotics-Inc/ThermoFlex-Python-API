@@ -1,10 +1,10 @@
 from sys import getsizeof
 DEBUG_LEVELS = {
     'NONE': 0,
-    'DEVICE': 1,
-    'ERROR': 2,
-    'WARNING': 3,
-    'INFO': 4,
+    'ERROR': 1,
+    'WARNING': 2,
+    'INFO': 3,
+    'DEVICE': 4,
     'DEBUG': 5
 }
 

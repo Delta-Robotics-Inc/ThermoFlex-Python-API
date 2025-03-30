@@ -126,8 +126,14 @@ class Session:
             os.chdir(self.environment)
     
     def end(self): #ends the session
-        sh.copytree(f'{self.environment}/logs' , f'{base_path}/session{self.id}log', dirs_exist_ok = True)
-        os.remove(self.environment)
+        try:
+            sh.copytree(f'{self.environment}/logs' , f'{base_path}/session{self.id}log', dirs_exist_ok = True)
+            sh.rmtree(self.environment)
+        except PermissionError:
+            print('Permission Error: Cannot remove session directory')
+        except Exception as e:
+            print(f'Error: {e}')
+            raise
     
     def logging(self,cmd, logtype:int): #creates the LogMessage object with the available log data
         #print(cmd,tp)   #DEBUG

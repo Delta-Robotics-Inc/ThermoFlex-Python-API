@@ -18,10 +18,12 @@ multiple nodes connected over CAN, see the other examples in this folder.
 import thermoflex as tf
 import time
 
+# tf.set_debug_level("DEBUG") # Use for debug if needed
+
 node_net = tf.discover([105])[0]  # Discover networks over USB and get the first one
 
 node_net.refreshDevices()  # Discover all Node devices on the selected network
-time.sleep(1) # Wait for the devices to be discovered
+tf.delay(1) # Wait for the devices to be discovered
 
 node = node_net.node_list[0]  # Get the first connected Node
 
@@ -30,13 +32,18 @@ node.setMuscle(0, muscle)  # Assign the muscle to the Node at port 0
 
 # Move the Muscle
 muscle.setMode("percent")
-muscle.setSetpoint(0.1)
+muscle.setSetpoint("percent", 0.1)
 muscle.setEnable(True)
+tf.delay(2)
+muscle.setSetpoint("percent", 0.3)
+tf.delay(2)
+muscle.setSetpoint("percent", 0.4)
+tf.delay(2)
+muscle.setSetpoint("percent", 0.5)
 
-tf.delay(5)  # Increase if needed but be careful!  There is no safegaurd to prevent the muscle from overheating
+tf.delay(4)  # Increase if needed but be careful!  There is no safegaurd to prevent the muscle from overheating
 
 node.disableAll()
 
-time.sleep(1)
+tf.delay(1)
 tf.endAll()
-

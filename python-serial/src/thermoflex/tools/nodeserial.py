@@ -7,7 +7,6 @@ from .debug import Debugger as D, DEBUG_LEVELS
 import threading as thr
 from enum import Enum
 
-
 stop_threads_flag = thr.Event() # Flag to stop all threads when the thread is ready to close
 
 def threaded(func):
@@ -22,9 +21,8 @@ def threaded(func):
         return thread
 
     return wrapper
-   
 
-def send_command_str(command, network):
+def send_command_str(command, network): #TODO: construct packet in commmand, remove send_command options
     '''
     
     Prints the command to a terminal. Used for test purposes.
@@ -44,7 +42,8 @@ def send_command_str(command, network):
     # Use the debug function to print the command packet to the terminal
     D.debug(DEBUG_LEVELS['INFO'], "send_command_str", f'\nPort: {port}')
     D.debug(DEBUG_LEVELS['INFO'], "send_command_str", f'Command Packet: {command.packet}')
-    print(f'{command_final}\n')
+    D.debug(DEBUG_LEVELS['INFO'], f'{command_final}\n')
+    
     t.sleep(0.05)
 
 def send_command(command, network):
@@ -60,13 +59,13 @@ def send_command(command, network):
     if not (command.destnode_id == [0xFF,0xFF,0xFF] or command.destnode_id == [0x00,0x00,0x01]):
         msgconfirm = network.getDevice(command.destnode_id)
         print(type(msgconfirm))
-        msgconfirm.msgsent = True     
-
+        msgconfirm.msgsent = True
 # States for the receiver state machine
 class ReceptionState(Enum):
     WAIT_FOR_START_BYTE = 1
     READ_LENGTH = 2
     READ_PACKET = 3
+
 
 # Receives data from a Node Network's serial port and processes packets
 class Receiver:
@@ -79,6 +78,11 @@ class Receiver:
 
     def receive(self):
         port = self.network.arduino
+
+        # Check if port is still open before attempting to read
+        if not port.is_open:
+            return None
+
         #try:
         if port.in_waiting > 0:
             D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"\nReading incoming data from network {self.network.idnum}:")
@@ -150,6 +154,7 @@ def serial_thread(network):
             cmd_rec = receiver.receive()
         except s.SerialException:
             break
+        # Check if port is still open before attempting to read
 
         # Check if the stop_threads_flag has been set, if so, break the loop and end the thread
         if stop_threads_flag.is_set():
@@ -158,25 +163,22 @@ def serial_thread(network):
         if not cmd_rec:
             pass
         else:
-            network.disperse(cmd_rec) #TODO: Node Dispersal needs to be external?
-            #network.rec_cmd_buff.append(cmd_rec)
+            network.disperse(cmd_rec)
             network.sess.logging(cmd_rec,1)
 
         try:
             cmd = network.command_buff[0]
             D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Sending command to Network {network.idnum}")
             #print(cmd.construct) #DEBUG
-            send_command(cmd,network) #command sent flag
+            send_command(cmd,network)
             network.sess.logging(cmd,0)
             del network.command_buff[0]
         except IndexError:
-            D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"No data to send to Network {network.idnum}")
-        except s.SerialException:
-            stop_threads_flag.set()
+            #print('No data') #DEBUG
+            pass
 
     stop_threads_flag.clear() # Clear the flag to signal that the thread has ended
 
-
-         
-for th in threadlist:
-    th.join()
+        
+# for th in threadlist:
+#         th.join()

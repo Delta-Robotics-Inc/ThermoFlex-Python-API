@@ -1,29 +1,40 @@
+# Thermoflex Python API
 
 
-# Thermoflex API
+### System Requirements
 
-
-#### System Requirements
-
-- Python 3.12 or greater
-- Pyserial 3.5 or greater
+- [Python 3.12 or greater](https://www.python.org/)
+- [Pyserial 3.5 or greater](https://pyserial.readthedocs.io/en/latest/pyserial.html)
 
 ### Introduction
 
-The Thermoflex muscle is a current activated artificial muscle that is designed to have a low profile usage and simple activation and deactivation sequence. The purpose of this library is 2-fold; to become the working backend of the Delta hardware application and to allow for open-source development of the Nitinol muscle.
-
-### Download and Installation
+The Thermoflex muscle is a current activated artificial muscle that is designed to have a low profile and simple activation and deactivation sequence. The purpose of this library is provide a universal python API for communicating with and directing ThermoFlex Node devices over USB and `pyserial`.
 
 
-To install our software, you can use the pip and package methods
+# Download and Installation
 
-`pip install thermoflex`
 
-or you can install manually by downloading the files from our Github release page and installing the package with pip.
+To install our software, the most common method is through pip:
 
-[Github](https://github.com/Delta-Robotics-Inc/ThermoFlex-Python-API/releases)
+```bash
+pip install thermoflex
+```
 
-### Launch and Use
+You can install manually by downloading the files from our Github release page and installing the package with pip.
+
+[Github Releases Page](https://github.com/Delta-Robotics-Inc/ThermoFlex-Python-API/releases)
+
+### For Developers
+You can also install manually by cloning this repository and running the following commands. This is good if you want to contribute to the library or work with an older/prototype version.,
+```bash
+git clone https://github.com/Delta-Robotics-Inc/ThermoFlex-Python-API
+cd ThermoFlex-Python-API
+pip install .\python-serial\               # Use for normal installation (not for development)
+pip install --editable .\python-serial\    # OR Install for developement (changes made to repository source code reflects in your `thermoflex` package
+```
+
+
+# Launch and Use
 
  Import the thermoflex library and use .discover() to find our product. 
  
@@ -122,7 +133,7 @@ with $SRC being the path to the [python-serial](python-serial/) folder. This wil
 
 ## Node Commands
 
-| **Node Commands**                        | **Function**                                                                                                  |
+| **Node Commands**                    | **Function**                                                                                                                          |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | status()                             | Checks the status of the node and returns its status                                                                                      |
 | getStatus()                          | Returns the latest node status received                                                                                                   |
@@ -141,7 +152,7 @@ with $SRC being the path to the [python-serial](python-serial/) folder. This wil
 
 ## Muscle Commands
 
-| **Muscle Command**                   | **Function**                                                                                                                                  |
+| **Muscle Command**                   | **Function**                                                                                                                          |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | changeMusclemos(*mosfetnum*:int) | Manually changes the mosfet number of the selected muscle. The mosfet number is set automatically when the muscle is assigned to a node;  |
 | setMode(conmode)                 | Sets the data type that a given muscle receives for its setSetpoint() command; conmode : (percent, volts, amps, ohms, train)              |

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thermoflex"
-version = "1.0.1"
+version = "1.0.2"
 authors = [{name = "Marvin S", email = "marvin@deltaroboticsinc.com"}, {name = "Mark D", email = "mark@deltaroboticsinc.com"} ]
 readme = "Getting Started.md"
 
