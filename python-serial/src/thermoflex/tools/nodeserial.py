@@ -2,7 +2,7 @@ import sys
 import serial as s
 import time as t
 import struct as st
-from .packet import parse_packet, STARTBYTE
+from .packet import parse_packet, command_t, STARTBYTE
 from .debug import Debugger as D, DEBUG_LEVELS
 import threading as thr
 from enum import Enum
@@ -17,12 +17,14 @@ def threaded(func):
     def wrapper(*args, **kwargs):
         thread = thr.Thread(target=func, args=args, kwargs = kwargs)
         thread.start()
+        #print(thread.getName(),func) # prints thread name and function type
         threadlist.append(thread)
         return thread
 
     return wrapper
+   
 
-def send_command_str(command, network): #TODO: construct packet in commmand, remove send_command options
+def send_command_str(command, network):
     '''
     
     Prints the command to a terminal. Used for test purposes.
@@ -43,7 +45,6 @@ def send_command_str(command, network): #TODO: construct packet in commmand, rem
     D.debug(DEBUG_LEVELS['INFO'], "send_command_str", f'\nPort: {port}')
     D.debug(DEBUG_LEVELS['INFO'], "send_command_str", f'Command Packet: {command.packet}')
     print(f'{command_final}\n')
-    
     t.sleep(0.05)
 
 def send_command(command, network):
@@ -55,14 +56,17 @@ def send_command(command, network):
     port = network.arduino
     D.debug(DEBUG_LEVELS['DEBUG'], "send_command", f'Sent Command{command.packet}')
     port.write(bytearray(command.packet))
-    t.sleep(0.05)      
+    t.sleep(0.05)
+    if not (command.destnode_id == [0xFF,0xFF,0xFF] or command.destnode_id == [0x00,0x00,0x01]):
+        msgconfirm = network.getDevice(command.destnode_id)
+        print(type(msgconfirm))
+        msgconfirm.msgsent = True     
 
 # States for the receiver state machine
 class ReceptionState(Enum):
     WAIT_FOR_START_BYTE = 1
     READ_LENGTH = 2
     READ_PACKET = 3
-
 
 # Receives data from a Node Network's serial port and processes packets
 class Receiver:
@@ -142,7 +146,10 @@ def serial_thread(network):
     receiver = Receiver(network)
 
     while True:
-        cmd_rec = receiver.receive()
+        try: 
+            cmd_rec = receiver.receive()
+        except s.SerialException:
+            break
 
         # Check if the stop_threads_flag has been set, if so, break the loop and end the thread
         if stop_threads_flag.is_set():
@@ -151,22 +158,25 @@ def serial_thread(network):
         if not cmd_rec:
             pass
         else:
-            network.disperse(cmd_rec)
+            network.disperse(cmd_rec) #TODO: Node Dispersal needs to be external?
+            #network.rec_cmd_buff.append(cmd_rec)
             network.sess.logging(cmd_rec,1)
 
         try:
             cmd = network.command_buff[0]
             D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Sending command to Network {network.idnum}")
             #print(cmd.construct) #DEBUG
-            send_command(cmd,network)
+            send_command(cmd,network) #command sent flag
             network.sess.logging(cmd,0)
             del network.command_buff[0]
         except IndexError:
-            #print('No data') #DEBUG
-            pass
+            D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"No data to send to Network {network.idnum}")
+        except s.SerialException:
+            stop_threads_flag.set()
 
     stop_threads_flag.clear() # Clear the flag to signal that the thread has ended
 
-        
+
+         
 for th in threadlist:
-        th.join()
+    th.join()

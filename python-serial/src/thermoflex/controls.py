@@ -55,7 +55,9 @@ def timer(time):# TODO: seperate event flag f
     for x in range(time):
         timeleft-=1
         t.sleep(1)
-    stop_threads_flag.clear()
+    if stop_threads_flag.is_set: return    
+    else:
+        stop_threads_flag.clear()
 
 def update():
     '''
@@ -112,7 +114,7 @@ def endAll():
             D.debug(DEBUG_LEVELS['WARNING'], "endAll", "Warning: Port not open but attempted to close")
             pass
         finally:
-            del node
+            node.endself()
     
     for net in NodeNet.netlist:
         del net

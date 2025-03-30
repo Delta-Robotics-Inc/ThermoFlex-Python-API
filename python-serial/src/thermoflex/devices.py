@@ -4,8 +4,9 @@ Comments
 #TODO: add status parsing
 
 import time as t
+from threading import Event
 from .tools.packet import command_t
-from .tools.nodeserial import send_command, send_command_str, threaded
+from .tools.nodeserial import send_command, send_command_str
 from .tools.debug import Debugger as D, DEBUG_LEVELS
 
 #arduino commands
@@ -31,14 +32,15 @@ def enforce_size_limit(data:list,size = 100):
 
 class Node:
     nodel = []
-    def __init__(self, idnum, network=None, mosports:int = 2): #network status
+    
+    def __init__(self, idnum, network=None, mosports:int = 2, n_id = [0x00, 0x00, 0x00], pulse = True): #network status
         Node.nodel.append(self)
         self.index = idnum
         self.serial = None 
         self.net = network
         self.arduino = self.net.arduino
         self.logmode = 0
-        self.node_id = None
+        self.node_id = n_id
         self.canid = None
         self.firmware = None
         self.board_version = None
@@ -55,6 +57,17 @@ class Node:
         self.muscle0 = Muscle(0, 0, 0, 0, self)
         self.muscle1 = Muscle(1, 0, 0, 0, self)
         self.muscles = {"0":self.muscle0, "1":self.muscle1}
+
+        #set Heartbeat
+        self.msgsent = False
+        self.msgrec = True
+        if pulse == True:
+            self.heartbeat = True
+            self.pulse = command_t(self, name = "heartbeat", params = [])
+            self.tlastmsgrec = None
+            self.tlastmsgsent = None
+
+
   
     def testMuscles(self, sendformat:int = 1):
         '''
@@ -150,7 +163,7 @@ class Node:
 
     def getStatus(self):
         return self.status_curr
-
+    
     def updateStatus(self,inc_data):
 
         resp_type, resp_data = inc_data
@@ -267,7 +280,7 @@ class Node:
                     self.net.command_buff.append(command)
                     D.debug(DEBUG_LEVELS['DEBUG'], "muscle", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
       
-    def setSetpoint(self, conmode, device, setpoint:float):   #takes muscle port and 
+    def setSetpoint(self, setpoint:float, conmode, device):   #takes muscle port and 
         D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Setting setpoint for {device} to {setpoint}")
         #TODO: call muscle port number
         if type(device) == int:
@@ -361,7 +374,16 @@ class Node:
         for x in self.muscles.keys():
             command = command_t(self, SE, device = f'm{self.muscles[x].idnum+1}', params = [False] )
             self.net.command_buff.append(command)
-                                                             
+
+    
+    def endself(self):
+        for m in self.muscles:
+            del m
+        self.net.node_list.remove(self)
+        Node.nodel.remove(self)
+        del self                                                             
+
+    
 #---------------------------------------------------------------------------------------  
 
 class Muscle:
@@ -428,7 +450,7 @@ class Muscle:
         elif out == 1:
             return mode
            
-    def setSetpoint(self, conmode = None, setpoint:float = None):   #takes given setpoint and sends relevant information to node
+    def setSetpoint(self, setpoint:float = None, conmode = None):   #takes given setpoint and sends relevant information to node
         #TODO connode
         if conmode:
             mode = self.setMode(conmode, 1)        

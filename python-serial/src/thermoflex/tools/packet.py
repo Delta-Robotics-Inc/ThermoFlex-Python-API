@@ -206,6 +206,7 @@ class command_t:
                    "log-mode": [0x05, [int]], #log mode(subject to change)
 			       "configure": [0x06,[int,int]],
                    "silence":[0x07,[bool]],
+                   "heartbeat": [0xFE, []],
                    "reset": [0xFF, []]
 			       } 
     devicedef = ("all", "node","portall", "m1", "m2")
@@ -233,6 +234,7 @@ class command_t:
             raise ValueError("Incorrect arguments for this command") 
         #packet construction
         self.destnode = node
+        self.destnode_id = node.node_id
         self.construct = self.sConstruct()
         self.length = packet_size(self.construct)
         self.type = IDTYPE
@@ -308,7 +310,9 @@ class command_t:
         Constructs the .proto command from command_t object. Returns bytes string.
         '''
         node_cmd = tfproto.NodeCommand()
-        if self.code == 0x01:
+        if self.code == 0xFE:
+            return b''
+        elif self.code == 0x01:
             if self.params[0] == True:
                 node_cmd.enable.device = self.get_device_code()
             elif self.params[0] == False:
@@ -340,7 +344,6 @@ class command_t:
         return node_cmd.SerializeToString()
 
     def packet_construction(self):
-        
         
         packet = [PROTOVER,IDTYPE,IDTYPE]
         plength = packet_size(self.construct)
