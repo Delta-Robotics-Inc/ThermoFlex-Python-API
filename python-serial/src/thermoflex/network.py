@@ -167,26 +167,19 @@ class NodeNet:
         node_l = self.node_list.copy()
         response = deconst_serial_response(rec_packet['payload'])
         matching_node = None
-        print(self.node_list, node_l, packet_node_id) #TEST
         # Check if the node already exists in the network
         
         for node in node_l:# TODO: Disperse packet to node or muscle accordingly
             if node.node_id == packet_node_id:
                 matching_node = node
-                print("matching node found") #TEST
+
                 D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to existing node with id: {node.node_id}")
                 break
         else: # If the node does not exist in the network, add it     
             matching_node = self.addNode(packet_node_id)
-            #print(self.node_list, node_l, packet_node_id) #TEST
-            # try:
-            #     matching_node = self.getDevice(packet_node_id)
-            # except IndexError:
-            #     print("Node {packet_node_id} not added.")
             
             D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to new node with id: {packet_node_id}")
             
-        #print(self.node_list, node_l, packet_node_id) #TEST
         matching_node.msgrec = True
 
         if 'status' in response[0]:
@@ -215,10 +208,10 @@ class NodeNet:
         currtime = int(t.time())
         for node in self.node_list:
             if node.heartbeat == True:
-                if (node.tlastmsgrec + 1) > NodeNet.TIMEOUT:
+                if (currtime-(node.tlastmsgrec + 1)) >= NodeNet.TIMEOUT:
                     node.endself()
 
-                if node.tlastmsgsent > NodeNet.TIMEOUT:
+                if (currtime-node.tlastmsgsent) >= NodeNet.TIMEOUT:
                     send_command(node.pulse, self)
 
     def update_network(self):

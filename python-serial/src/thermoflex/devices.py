@@ -374,7 +374,6 @@ class Node:
         for x in self.muscles.keys():
             command = command_t(self, SE, device = f'm{self.muscles[x].idnum+1}', params = [False] )
             self.net.command_buff.append(command)
-    
 
     
     def endself(self):
