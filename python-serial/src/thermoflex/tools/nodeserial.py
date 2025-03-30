@@ -2,20 +2,21 @@ import sys
 import serial as s
 import time as t
 import struct as st
-from .packet import parse_packet, STARTBYTE
+from .packet import parse_packet, command_t, STARTBYTE
 from .debug import Debugger as D, DEBUG_LEVELS
 import threading as thr
 from enum import Enum
 
-# Define the global thread list
-threadlist = []
-
 stop_threads_flag = thr.Event() # Flag to stop all threads when the thread is ready to close
 
 def threaded(func):
+    global threadlist
+    threadlist = []
+    
     def wrapper(*args, **kwargs):
         thread = thr.Thread(target=func, args=args, kwargs = kwargs)
         thread.start()
+        #print(thread.getName(),func) # prints thread name and function type
         threadlist.append(thread)
         return thread
 
@@ -54,8 +55,11 @@ def send_command(command, network):
     port = network.arduino
     D.debug(DEBUG_LEVELS['DEBUG'], "send_command", f'Sent Command{command.packet}')
     port.write(bytearray(command.packet))
-    t.sleep(0.05)      
-
+    t.sleep(0.05)
+    if not (command.destnode_id == [0xFF,0xFF,0xFF] or command.destnode_id == [0x00,0x00,0x01]):
+        msgconfirm = network.getDevice(command.destnode_id)
+        print(type(msgconfirm))
+        msgconfirm.msgsent = True
 # States for the receiver state machine
 class ReceptionState(Enum):
     WAIT_FOR_START_BYTE = 1
@@ -146,7 +150,11 @@ def serial_thread(network):
     receiver = Receiver(network)
 
     while True:
-        cmd_rec = receiver.receive()
+        try: 
+            cmd_rec = receiver.receive()
+        except s.SerialException:
+            break
+        # Check if port is still open before attempting to read
 
         # Check if the stop_threads_flag has been set, if so, break the loop and end the thread
         if stop_threads_flag.is_set():

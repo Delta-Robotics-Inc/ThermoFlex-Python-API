@@ -37,7 +37,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-dists
-          path: dist/
+          path: python-serial/dist/
           
   testpypi-publish:
     runs-on: ubuntu-latest
@@ -52,7 +52,7 @@ jobs:
     environment:
       name: pypi
       # OPTIONAL: uncomment and update to include your PyPI project URL in the deployment status:
-      url: https://pypi.org/p/thermo/
+      url: https://test.pypi.org/p/thermo/
       #
       # ALTERNATIVE: if your GitHub Release name is the PyPI project version string
       # ALTERNATIVE: exactly, uncomment the following line instead:
@@ -64,8 +64,9 @@ jobs:
         with:
           name: release-dists
           path: python-serial/dist/
-
-      - name: Publish release distributions to PyPI
+          
+      - name: Publish distribution 📦 to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          repository-url: https://test.pypi.org/legacy/
           packages-dir: python-serial/dist/

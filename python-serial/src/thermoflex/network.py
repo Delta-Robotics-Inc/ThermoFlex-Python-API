@@ -1,31 +1,77 @@
-from .tools.nodeserial import serial_thread, send_command
+
+from .tools.nodeserial import serial_thread, send_command, stop_threads_flag, threaded
 from .tools.packet import command_t, deconst_serial_response
 from .devices import Node, Muscle
 from .sessions import Session
 from .tools.debug import Debugger as D, DEBUG_LEVELS
 import serial as s
 import time as t
+import threading as thr
 #TODO: id address pull from network
+
+NET_MANAGER_FLAG = thr.Event()
+
+class NetManager:
+    
+    manage_list = []
+    def __init__(self, net = None):
+        NetManager.manage_list.append(net)
+        NET_MANAGER_FLAG.clear()
+        NetManager.net_manager_thread()
+    
+    def add_net(net):
+        NetManager.manage_list.append(net)
+
+    def remove_net(net):
+        NetManager.manage_list.remove(net)
+
+    def stop_manager():
+        NET_MANAGER_FLAG.set()
+
+    @threaded
+    def net_manager_thread():
+        
+        while NET_MANAGER_FLAG.is_set() == False:
+            
+            checklist = NodeNet.netlist.copy()
+            for net in checklist:
+                # for cmd in net.rec_cmd_buff:
+                #     net.disperse(cmd)
+                #     del net.rec_cmd_buff[cmd]
+                
+                try:
+                    net.update_network()
+                except TypeError:
+                    pass
+
 def sess(net):#create session if one does not exist
     if Session.sescount>0:
         return Session.sessionl[-1]
     else:
         return Session(net)
+
+def manager(net): #create a manager if one does not exist
+    if len(NetManager.manage_list) != 0:
+        NetManager.add_net(net)
+    else:
+        NetManager(net)
+
 class NodeNet:
     
     netlist = [] # Static list of all nodenet objects
+    TIMEOUT = 99
     def __init__(self, idnum, port):
         NodeNet.netlist.append(self)
         self.idnum = idnum
         self.port = port
         self.arduino = None
-        self.broadcast_node = Node(0,self)
-        self.self_node = Node(1, self)
-        self.broadcast_node.node_id = [0xFF,0xFF,0xFF]
-        self.self_node.node_id = [0x00,0x00,0x01]
+        self.broadcast_node = Node(0,self, n_id=[0xFF,0xFF,0xFF],pulse=False)
+        self.self_node = Node(1, self, n_id=[0x00,0x00,0x01],pulse = False)
         self.node_list = [] # list of connected nodes; leave broadcast node and self-node out of list
         self.command_buff = []
+        self.rec_cmd_buff = []
         self.sess = sess(self)
+        self.manager = manager(self)
         self.debug_name = f"NodeNet {self.idnum}" # Name for debugging purposes
         try:
             self.openPort()
@@ -48,8 +94,7 @@ class NodeNet:
     def addNode(self, node_id):
         node_id = [int(x) for x in node_id] # In case node_id is a byte array
         D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Adding node: {node_id}")
-        new_node = Node(len(Node.nodel)+1,self)
-        new_node.node_id = node_id
+        new_node = Node(len(Node.nodel)+1,self, n_id=node_id)
         self.node_list.append(new_node)
         return new_node
     
@@ -59,6 +104,7 @@ class NodeNet:
         for node in self.node_list:
             if node.node_id == node_id:
                 self.node_list.remove(node)
+                node.endself()
 
     def getDevice(self, node_id):
         # Helper function to convert an integer to a byte list
@@ -120,25 +166,59 @@ class NodeNet:
     def disperse(self, rec_packet):
         D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersing packet: {rec_packet}")
         packet_node_id = rec_packet['sender_id']# Node ID is stored as a list of integers
+        node_l = self.node_list.copy()
         response = deconst_serial_response(rec_packet['payload'])
         matching_node = None
-
         # Check if the node already exists in the network
-        for node in self.node_list:# TODO: Disperse packet to node or muscle accordingly
+        
+        for node in node_l:# TODO: Disperse packet to node or muscle accordingly
             if node.node_id == packet_node_id:
                 matching_node = node
+
                 D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to existing node with id: {node.node_id}")
                 break
-            
-        # If the node does not exist in the network, add it
-        if(matching_node == None):  
+        else: # If the node does not exist in the network, add it     
             matching_node = self.addNode(packet_node_id)
+            
             D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to new node with id: {packet_node_id}")
+            
+        matching_node.msgrec = True
 
-        # Disperse the response to the node
         if 'status' in response[0]:
             matching_node.updateStatus(response)
         else:
             matching_node.latest_resp = response[1]
-
+        
         D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersed packet to node: {matching_node.node_id}")
+    
+    def update_node(self,id):
+
+        #gets node device
+        node = self.getDevice(id)
+        
+        #checks node status and updates times
+        if node.msgsent == True:
+            node.tlastmsgsent = int(t.time())
+            node.msgsent == False
+        
+        if node.msgrec == True:
+            node.tlastmsgrec = int(t.time())
+            node.msgrec == False
+
+    def time_check(self):
+
+        currtime = int(t.time())
+        for node in self.node_list:
+            if node.heartbeat == True:
+                if (currtime-(node.tlastmsgrec + 1)) >= NodeNet.TIMEOUT:
+                    node.endself()
+
+                if (currtime-node.tlastmsgsent) >= NodeNet.TIMEOUT:
+                    send_command(node.pulse, self)
+
+    def update_network(self):
+
+        for node in self.node_list:
+            self.update_node(node.node_id)
+        self.time_check()
+             
