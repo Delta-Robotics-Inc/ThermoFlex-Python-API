@@ -60,53 +60,6 @@ def send_command(command, network):
     port.write(bytearray(command.packet))
     t.sleep(0.05)      
 
-class Pulse:
-    
-    def __init__(self, node, type = "receive"):
-        self.node = node
-        self.node_id = node.node_id
-        self.time = int(t.time())
-        if type == "send":
-            self.timeout = 2.0
-            self.compulse()
-        elif type == "receive":
-            self.timeout = 3.0
-            self.nodepulse()
-
-    def reset(self):
-        self.time = int(t.time())
-
-    def heartbeat(self):
-        network = self.node.net
-        beat = command_t(self.node, "heartbeat", [])
-        send_command(beat,network)
-    
-    @threaded
-    def compulse(self):
-        starttime = self.time
-        while True:
-            try:    
-                curtime = int(t.time())
-                if curtime-starttime >= self.timeout:
-                    self.heartbeat()
-                    self.reset()
-                else:
-                    continue
-            except s.SerialTimeoutException:
-                continue
-            except s.SerialException:
-                continue
-    
-    @threaded
-    def nodepulse(self):
-        starttime = self.time
-        while True:
-            curtime = int(t.time())
-            if curtime-starttime >= self.timeout:
-                self.node.endself()
-            else:
-                continue
-    
         
 # States for the receiver state machine
 class ReceptionState(Enum):
@@ -144,14 +97,14 @@ class Receiver:
                 if byte == STARTBYTE:
                     D.debug(DEBUG_LEVELS['DEVICE'], "SerialThread", self.node_debug_str)
                     self.node_debug_str = ""
-                    #debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Start Byte Found: {byte}")
+                    D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Start Byte Found: {byte}")
                     self.packetData.clear()
                     self.packetData.append(byte)
                     self.state = ReceptionState.READ_LENGTH
                     self.network.sess.logging(self.node_debug_str, 2) # sends serial messages to debug
                     self.node_debug_str = ''
                 else:
-                    # debug_raw(DEBUG_LEVELS['NONE'], chr(byte))
+                    D.debug_raw(DEBUG_LEVELS['NONE'], chr(byte))
                     self.node_debug_str += chr(byte)
                     if len(self.node_debug_str) > 100:
                         #print(node_debug_str, end="")
@@ -209,7 +162,6 @@ def serial_thread(network):
             D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Sending command to Network {network.idnum}")
             #print(cmd.construct) #DEBUG
             send_command(cmd,network)
-            network.pulsereset(cmd)
             network.sess.logging(cmd,0)
             del network.command_buff[0]
         except IndexError:

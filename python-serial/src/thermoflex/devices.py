@@ -6,7 +6,7 @@ Comments
 import time as t
 from threading import Event
 from .tools.packet import command_t
-from .tools.nodeserial import send_command, send_command_str, Pulse
+from .tools.nodeserial import send_command, send_command_str
 from .tools.debug import Debugger as D, DEBUG_LEVELS
 
 #arduino commands
@@ -57,8 +57,6 @@ class Node:
         self.muscle1 = Muscle(1, 0, 0, 0, self)
         self.muscles = {"0":self.muscle0, "1":self.muscle1}
 
-        #set Heartbeat
-        self.pulse = Pulse(self)
   
     def testMuscles(self, sendformat:int = 1):
         '''

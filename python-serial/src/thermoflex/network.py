@@ -1,4 +1,4 @@
-from .tools.nodeserial import serial_thread, send_command, Pulse, stop_threads_flag
+from .tools.nodeserial import serial_thread, send_command, stop_threads_flag
 from .tools.packet import command_t, deconst_serial_response
 from .devices import Node, Muscle
 from .sessions import Session
@@ -31,7 +31,6 @@ class NodeNet:
         self.debug_name = f"NodeNet {self.idnum}" # Name for debugging purposes
         self.refreshDevices()
         self.start_serial()
-        self.pulse = Pulse(self.broadcast_node, "send")
         
     def refreshDevices(self):
         '''
@@ -124,8 +123,9 @@ class NodeNet:
         packet_node_id = rec_packet['sender_id']# Node ID is stored as a list of integers
         response = deconst_serial_response(rec_packet['payload'])
         matching_node = None
-
+        print(self.node_list) #TEST
         # Check if the node already exists in the network
+        
         for node in self.node_list:# TODO: Disperse packet to node or muscle accordingly
             if node.node_id == packet_node_id:
                 matching_node = node
@@ -136,16 +136,13 @@ class NodeNet:
         if(matching_node == None):  
             matching_node = self.addNode(packet_node_id)
             D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to new node with id: {packet_node_id}")
-
-        # Disperse the response to the node
-        matching_node.pulse.reset()
+            print(self.node_list) #TEST
         
+        # Disperse the response to the node
+        print(self.node_list) #TEST
         if 'status' in response[0]:
             matching_node.updateStatus(response)
         else:
             matching_node.latest_resp = response[1]
 
         D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersed packet to node: {matching_node.node_id}")
-
-    def pulsereset(self, cmd):
-        cmd.destnode.pulse.reset()
