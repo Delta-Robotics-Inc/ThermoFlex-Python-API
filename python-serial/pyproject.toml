@@ -7,6 +7,7 @@ name = "thermoflex"
 version = "1.0.1"
 authors = [{name = "Marvin S", email = "marvin@deltaroboticsinc.com"}, {name = "Mark D", email = "mark@deltaroboticsinc.com"} ]
 readme = "Getting Started.md"
+
 dependencies = ['pyserial == 3.5','protobuf == 5.28.3', 'pandas == 2.2.3']
 description = "This is the library for controlling the ThermoFlex muscle system by Delta Robotics"
 keywords = ["thermoflex" , "Delta", "Delta Robotics"]
