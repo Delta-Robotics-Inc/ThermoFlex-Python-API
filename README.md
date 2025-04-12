@@ -62,44 +62,35 @@ Once you have your connected node bound, you can call its status, reset and logg
 
 
 
-To create [Muscle](#muscle-commands)-class objects, start by calling tf.muscle(). This is where you need input your *idnum*, *resistance*, *length*, and *diameter* values if you have them. 
+To create [Muscle](#muscle-commands)-class objects, start by calling tf.muscle(). Input the "idnum" which is the port on the Node controller that the muscle is plugged into.
 
 
 ``` Python
-muscle1 = tf.muscle(idnum = 0, resist= 300, diam= 2, length= 150)
-muscle2 = tf.muscle(idnum = 1, resist= 290, diam= 2, length= 145)
+muscle1 = tf.muscle(idnum = 0)
+muscle2 = tf.muscle(idnum = 1)
 ```
 
-Note that the *idnum* field is the only field that is neccesary for creating the [Muscle](#muscle-commands)-object.
-
-Next, assign the muscle objects to a node object by calling the .setMuscle() command. This command takes the identification number and the muscle object as arguments
+Next, assign the muscle objects to a node object by calling the .setMuscle() command. This command takes the port number and the muscle object as arguments
 
 ```Python
 node0.setMuscle(0, muscle1)
 node0.setMuscle(1, muscle2)
 ```
 
-Sessions are automatically created and create a filesystem that exports to a higher level folder. Sessions track the incoming and outgoing serial data and saves it to a .ses file and a .txt file. The .txt files are generated as plain messages, where as the .ses files have serialized messages. 
-
-```Python
-sessionl = tf.Session.sessionl
-session1 = session[0]
-```
-
-From here, you can add commands to your command buffer. [Node Commands](#node-commands)
-
-These commands should be in the format,
+These commands should be in the following format, either referencing a `Muscle` object or a `Node` object:
 
 ```Python
 node0.enable(muscle1)
+# or
+muscle1.enable()
 ```
 
-The muscle objects also have their own commands that are passed to their commanding node.[Muscle Commands](#muscle-commands)
+Full list of Muscle Commands: [Muscle Commands](#muscle-commands)
 
 
-## Program Commands
+## Library Functions
 
-| **Program Commands**  | **Function**                                                            |
+| **Program Function**  | **Description**                                                         |
 | --------------------- | ----------------------------------------------------------------------- |
 | discover(*prodid*)    | finds connected nodes from the product id (*prodid*)                    |
 | update()              | updates all of the networks                                             |
