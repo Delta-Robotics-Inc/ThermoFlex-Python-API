@@ -94,9 +94,12 @@ class Receiver:
             # Check if the stop_threads_flag has been set, if so, break the loop and end the thread
             if stop_threads_flag.is_set():
                 break
-
-            byte = port.read(1)
-            byte = byte[0]  # Convert from bytes to integer
+            
+            try:
+                byte = port.read(1)
+                byte = byte[0]  # Convert from bytes to integer
+            except TypeError:
+                continue  # Ignore invalid bytes
 
             if self.state == ReceptionState.WAIT_FOR_START_BYTE:
                 if byte == STARTBYTE:

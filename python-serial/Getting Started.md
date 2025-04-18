@@ -29,7 +29,7 @@ Install the thermoflex library. You can do this 3 different ways.
 3. Download the latest release from [Github Releases](https://github.com/Delta-Robotics-Inc/ThermoFlex-Python-API/releases), cd into the folder and type this command
     
      ```bash
-    pip install thermoflex-1.0.1.tar.gz 
+    pip install thermoflex-1.0.2.tar.gz 
     ```
     *The version number is subject to change*
 

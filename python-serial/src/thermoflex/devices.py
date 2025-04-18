@@ -450,7 +450,7 @@ class Muscle:
         elif out == 1:
             return mode
            
-    def setSetpoint(self, setpoint:float = None, conmode = None):   #takes given setpoint and sends relevant information to node
+    def setSetpoint(self, conmode = None, setpoint:float = None):   #takes given setpoint and sends relevant information to node
         #TODO connode
         if conmode:
             mode = self.setMode(conmode, 1)        

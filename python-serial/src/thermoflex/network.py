@@ -43,6 +43,9 @@ class NetManager:
                     net.update_network()
                 except TypeError:
                     pass
+            if stop_threads_flag.is_set():
+                NET_MANAGER_FLAG.set()
+                break
 
 def sess(net):#create session if one does not exist
     if Session.sescount>0:
