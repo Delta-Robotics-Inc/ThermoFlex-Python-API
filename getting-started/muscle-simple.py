@@ -41,7 +41,7 @@ muscle.setSetpoint("percent", 0.4)
 tf.delay(2)
 muscle.setSetpoint("percent", 0.5)
 
-tf.delay(4)  # Increase if needed but be careful!  There is no safegaurd to prevent the muscle from overheating
+tf.delay(10)  # Increase if needed but be careful!  There is no safegaurd to prevent the muscle from overheating
 
 node.disableAll()
 

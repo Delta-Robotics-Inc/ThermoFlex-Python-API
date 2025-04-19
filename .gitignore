@@ -1,8 +1,10 @@
 test-env/
 asus-test-env/
+asus-venv311/
 ThermoflexSessions/
 ExampleSessions/
 devtest/
 scratch/
 communication/
 protoc-28.2-win64/
+python-serial/src/thermoflex/__pycache__/
