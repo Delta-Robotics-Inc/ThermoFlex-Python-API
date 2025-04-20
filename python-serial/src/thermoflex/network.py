@@ -61,7 +61,7 @@ def manager(net): #create a manager if one does not exist
 
 class NodeNet:
     
-    netlist = [] # Static list of all nodenet objects
+    netlist: list['NodeNet'] = [] # Static list of all nodenet objects
     TIMEOUT = 99
     def __init__(self, idnum, port):
         NodeNet.netlist.append(self)
@@ -70,7 +70,7 @@ class NodeNet:
         self.arduino = None
         self.broadcast_node = Node(0,self, n_id=[0xFF,0xFF,0xFF],pulse=False)
         self.self_node = Node(1, self, n_id=[0x00,0x00,0x01],pulse = False)
-        self.node_list = [] # list of connected nodes; leave broadcast node and self-node out of list
+        self.node_list: list['Node'] = [] # list of connected nodes; leave broadcast node and self-node out of list
         self.command_buff = []
         self.rec_cmd_buff = []
         self.sess = sess(self)
@@ -94,42 +94,38 @@ class NodeNet:
         t.sleep(0.1) # Await for responses
         # If blocking, then we know that the device list is updated when the function returns.
     
-    def addNode(self, node_id):
-        node_id = [int(x) for x in node_id] # In case node_id is a byte array
-        D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Adding node: {node_id}")
-        new_node = Node(len(Node.nodel)+1,self, n_id=node_id)
+    def addNode(self, id):
+        id = [int(x) for x in id] # In case id is a byte array
+        D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Adding node: {id}")
+        new_node = Node(len(Node.nodel)+1,self, n_id=id)
         self.node_list.append(new_node)
         return new_node
     
-    def removeNode(self, node_id):
-        node_id = [int(x) for x in node_id] # In case node_id is a byte array
-        D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Removing node: {node_id}")
+    def removeNode(self, id):
+        id = [int(x) for x in id] # In case id is a byte array
+        D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Removing node: {id}")
         for node in self.node_list:
-            if node.node_id == node_id:
+            if node.id == id:
                 self.node_list.remove(node)
                 node.endself()
 
-    def getDevice(self, node_id):
+    def getDevice(self, id):
         # Helper function to convert an integer to a byte list
         def int_to_bytearray(n):
             return list(n.to_bytes((n.bit_length() + 7) // 8, byteorder='big')) or [0]
 
-        # If node_id is an integer, convert it to a byte list
-        if isinstance(node_id, int):
-            node_id = int_to_bytearray(node_id)
+        # If id is an integer, convert it to a byte list
+        if isinstance(id, int):
+            id = int_to_bytearray(id)
         
         for x in self.node_list:
-            D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Checking node: {x.node_id} with {node_id}")
-            if node_id == x.node_id:
+            D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Checking node: {x.id} with {id}")
+            if id == x.id:
                 return x
             else:
                 continue
     
-        D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Node: {node_id} not found in {self.debug_name}")
-
-    def nodeonNet(self): #periodically sends network
-        command_t(self.self_node, name = "status", params = [1])
-        send_command() #send network and recieve unknown response length
+        D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Node: {id} not found in {self.debug_name}")
     
     def openPort(self): 
         '''
@@ -175,10 +171,10 @@ class NodeNet:
         # Check if the node already exists in the network
         
         for node in node_l:# TODO: Disperse packet to node or muscle accordingly
-            if node.node_id == packet_node_id:
+            if node.id == packet_node_id:
                 matching_node = node
 
-                D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to existing node with id: {node.node_id}")
+                D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Packet dispersing to existing node with id: {node.id}")
                 break
         else: # If the node does not exist in the network, add it     
             matching_node = self.addNode(packet_node_id)
@@ -192,7 +188,7 @@ class NodeNet:
         else:
             matching_node.latest_resp = response[1]
         
-        D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersed packet to node: {matching_node.node_id}")
+        D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Dispersed packet to node: {matching_node.id}")
     
     def update_node(self,id):
 
@@ -222,6 +218,6 @@ class NodeNet:
     def update_network(self):
 
         for node in self.node_list:
-            self.update_node(node.node_id)
+            self.update_node(node.id)
         self.time_check()
              

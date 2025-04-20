@@ -1,3 +1,7 @@
+'''
+Test for ThermoFlex Session Logging
+'''
+
 import thermoflex as tf
 import time as t
 #write tests that send commands
@@ -8,11 +12,11 @@ node0 = network[0].self_node
 network[0].refreshDevices()
 muscle = tf.devices.Muscle
 # Example of how to characaterize muscles. 
-muscle1 = muscle(idnum = 0, resist= 300, diam= 2, length= 150)
-muscle2 = muscle(idnum = 1, resist= 290, diam= 2, length= 145)
+muscle1 = muscle(_port = 0, resist= 300, diam= 2, length= 150)
+muscle2 = muscle(_port = 1, resist= 290, diam= 2, length= 145)
 
-node0.setMuscle(0, muscle1) #takes the mosfet number muscle params to muscle
-node0.setMuscle(1, muscle2)
+node0.attachMuscle(muscle1, 0) #takes the mosfet number muscle params to muscle
+node0.attachMuscle(muscle2, 0)
 node0.logstate["printlog"]=True
 #node0.logstate["filelog"]=True #sets filelogging to true
 node0.logstate["binarylog"]=True #sets the logpath and logging to true

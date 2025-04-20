@@ -234,7 +234,7 @@ class command_t:
             raise ValueError("Incorrect arguments for this command") 
         #packet construction
         self.destnode = node
-        self.destnode_id = node.node_id
+        self.destnode_id : list[int] = node.id
         self.construct = self.sConstruct()
         self.length = packet_size(self.construct)
         self.type = IDTYPE
@@ -351,11 +351,11 @@ class command_t:
         packet.insert(0,plength[0])
         packet.insert(0,STARTBYTE)
         packet.extend(SENDID)
-        packet.extend(self.destnode.node_id)
+        packet.extend(self.destnode.id)
         packet.extend(self.construct)
 
         # Construct packet with constants and node info
-        packet.append(checksum_cal(PROTOVER, IDTYPE, IDTYPE, SENDID, self.destnode.node_id, self.construct))
+        packet.append(checksum_cal(PROTOVER, IDTYPE, IDTYPE, SENDID, self.destnode.id, self.construct))
         p = []
         
         #construct packet in bytes

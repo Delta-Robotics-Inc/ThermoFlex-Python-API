@@ -33,14 +33,14 @@ def enforce_size_limit(data:list,size = 100):
 class Node:
     nodel = []
     
-    def __init__(self, idnum, network=None, mosports:int = 2, n_id = [0x00, 0x00, 0x00], pulse = True): #network status
+    def __init__(self, i, network=None, mosports:int = 2, n_id = [0x00, 0x00, 0x00], pulse = True): #network status
         Node.nodel.append(self)
-        self.index = idnum
+        self.index = i
         self.serial = None 
         self.net = network
         self.arduino = self.net.arduino
         self.logmode = 0
-        self.node_id = n_id
+        self.id : list[int] = n_id
         self.canid = None
         self.firmware = None
         self.board_version = None
@@ -54,8 +54,8 @@ class Node:
         self.lastcmnd = None
 
         # Make default muscles
-        self.muscle0 = Muscle(0, 0, 0, 0, self)
-        self.muscle1 = Muscle(1, 0, 0, 0, self)
+        self.muscle0 = Muscle(0, self)
+        self.muscle1 = Muscle(1, self)
         self.muscles = {"0":self.muscle0, "1":self.muscle1}
 
         #set Heartbeat
@@ -207,7 +207,7 @@ class Node:
         else:
             D.debug(DEBUG_LEVELS['ERROR'], 'updateStatus', 'Incompatible status type.')
         status_str = str(self.node_status).replace('{','').replace('}','').replace("'",'')
-        self.status_curr = f'Node{self.index}, Address:{self.node_id}, Firmware:{self.firmware}, Board version:{self.board_version}, {status_str}'
+        self.status_curr = f'Node{self.index}, Address:{self.id}, Firmware:{self.firmware}, Board version:{self.board_version}, {status_str}'
 
     def reset(self, device = "node"):
         '''
@@ -238,13 +238,13 @@ class Node:
         self.net.command_buff.append(command)
 
     def setMode(self, conmode, device = 'all'):
-        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Setting mode for port {device} to {conmode}")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Setting mode for port {device} to {conmode}")
         '''
         
         Sets the data mode that the muscle will recieve. identify muscles by dictionary key.
         
         '''
-        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Setting mode for port {device} to {conmode}")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Setting mode for port {device} to {conmode}")
 
         # TODO wrap the following code into a function "identifyControlMode()" and replace in other methods
         cmode = None
@@ -270,21 +270,21 @@ class Node:
         if device == "all":
             for m in muscles.values():
                 m.cmode = command_t.modedef[cmode]
-                command = command_t(self, SM, device =  f"m{m.idnum+1}", params = [command_t.modedef.index(m.cmode)])
+                command = command_t(self, SM, device =  f"m{m.portNum+1}", params = [command_t.modedef.index(m.cmode)])
                 self.net.command_buff.append(command)
         else:
             for m in muscles.keys():
                 if str(device) == m :
                     self.muscles[m].cmode = command_t.modedef[cmode]
-                    command = command_t(self, SM, device = f"m{muscles[m].idnum+1}", params = [command_t.modedef.index(muscles[m].cmode)])
+                    command = command_t(self, SM, device = f"m{muscles[m].portNum+1}", params = [command_t.modedef.index(muscles[m].cmode)])
                     self.net.command_buff.append(command)
-                    D.debug(DEBUG_LEVELS['DEBUG'], "muscle", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
+                    D.debug(DEBUG_LEVELS['DEBUG'], "muscle", f"Node {self.id} added command to network buffer {self.net.idnum}")
       
     def setSetpoint(self, setpoint:float, conmode, device):   #takes muscle port and 
-        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Setting setpoint for {device} to {setpoint}")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Setting setpoint for {device} to {setpoint}")
         #TODO: call muscle port number
         if type(device) == int:
-            muscl = f"m{self.muscles[str(device)].idnum+1}"     
+            muscl = f"m{self.muscles[str(device)].portNum+1}"     
             cmode = conmode
             command = command_t(self, name = SS, device = muscl, params = [cmode, setpoint])
             self.net.command_buff.append(command)
@@ -292,7 +292,7 @@ class Node:
 
             if device == 'all':
                 for m in self.muscles:
-                    muscl = f"m{m.idnum+1}"     
+                    muscl = f"m{m.portNum+1}"     
                     cmode = conmode
                     command = command_t(self, name = SS, device = muscl, params = [cmode, setpoint])
                     self.net.command_buff.append(command)
@@ -302,30 +302,31 @@ class Node:
                 for x in device:
                     x = x.strip()
                     if 'm' in x:
-                        muscl = f"m{self.muscles[x.strip('m')].idnum+1}"     
+                        muscl = f"m{self.muscles[x.strip('m')].portNum+1}"     
                         cmode = conmode
                         command = command_t(self, name = SS, device = muscl, params = [cmode, setpoint])
                         self.net.command_buff.append(command)
                     else:
                         for y in self.muscles:
                             if int(x) == y.mosfetnum:
-                                muscl = f"m{y.idnum+1}"
+                                muscl = f"m{y.portNum+1}"
                                 cmode = conmode
                                 command = command_t(self, name = SS, device = muscl, params = [cmode, setpoint])
                                 self.net.command_buff.append(command)
 
         
-        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
+        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id} added command to network buffer {self.net.idnum}")
      
-    def setMuscle(self, idnum:int, muscle:object): # takes muscle object and idnumber and adds to a dictionary
-        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Setting muscle {idnum} to {muscle}")
+    def attachMuscle(self, muscle:object, portNum:int): # takes muscle object and idnumber and adds to a dictionary
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Setting muscle {portNum} to {muscle}")
         '''
         
         Adds the selected muscle to the node and assigns an id number
         
         '''
-        self.muscles[str(idnum)] = muscle
+        self.muscles[str(portNum)] = muscle
         muscle.masternode = self
+        muscle.portNum = portNum
         mvlist = list(self.muscles.values())
         muscle.mosfetnum = mvlist.index(muscle)
         self.mosports = len(self.muscles)
@@ -333,17 +334,17 @@ class Node:
     # TODO why is this muscle an object and the setMuscle() takes an int ??? and the muscle list is a dictionary with "1" not as an index.
     # setMuscle take the ID number of the muscle and sets the string idnumber as the dictionary key, this prevents multiple muscles having the same idnumber in a node
     def enable(self, muscle:object):
-        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Enabling muscle {muscle.idnum}")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Enabling muscle {muscle.portNum}")
         '''
         
         Enables the muscle selected.
         
         '''
-        self.net.command_buff.append(command_t(self, SE, device = f'm{muscle.idnum+1}', params = [True]))
-        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
+        self.net.command_buff.append(command_t(self, SE, device = f'm{muscle.portNum+1}', params = [True]))
+        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id} added command to network buffer {self.net.idnum}")
 
     def enableAll(self):
-        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Enabling all muscles")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Enabling all muscles")
         '''
         
         Enables all muscles.
@@ -351,53 +352,58 @@ class Node:
         '''
         
         for x in self.muscles.keys():
-            command = command_t(self, SE, device = f'm{self.muscles[x].idnum+1}', params = [True] ) 
+            command = command_t(self, SE, device = f'm{self.muscles[x].portNum+1}', params = [True] ) 
             self.net.command_buff.append(command)
      
     def disable(self, muscle:object):
-        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Disabling muscle {muscle.idnum}")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Disabling muscle {muscle.portNum}")
         '''
         
         Disables the muscle selected.
         
         '''
-        self.net.command_buff.append(command_t(self, SE, device = f'm{muscle.idnum+1}', params =  [False]))
-        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.node_id} added command to network buffer {self.net.idnum}")
+        self.net.command_buff.append(command_t(self, SE, device = f'm{muscle.portNum+1}', params =  [False]))
+        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id} added command to network buffer {self.net.idnum}")
 
     def disableAll(self):
-        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.node_id}: Disabling all muscles")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Disabling all muscles")
         '''
         
         Disables all muscles.
         
         '''
         for x in self.muscles.keys():
-            command = command_t(self, SE, device = f'm{self.muscles[x].idnum+1}', params = [False] )
+            command = command_t(self, SE, device = f'm{self.muscles[x].portNum+1}', params = [False] )
             self.net.command_buff.append(command)
 
     
     def endself(self):
         for m in self.muscles:
             del m
-        self.net.node_list.remove(self)
-        Node.nodel.remove(self)
+        try:
+            self.net.node_list.remove(self)
+            Node.nodel.remove(self)
+        except:
+            pass
         del self                                                             
 
     
 #---------------------------------------------------------------------------------------  
 
 class Muscle:
-    def __init__(self, idnum:int, resist = None, diam = None, length = None, masternode:object = None):
-        self.idnum = idnum 
+    def __init__(self, _port:int, masternode:Node = None):
+        self.portNum = _port 
         self.mosfetnum = None
-        self.resistance = resist
-        self.diameter = diam
-        self.length = length
         self.cmode = "percent"
         self.masternode = masternode
         self.enable_status = None
         self.train_state = None
         self.SMA_status = {'pwm_out':[],'load_amps':[],'load_voltdrop':[],'SMA_default_mode':None,'SMA_deafult_setpoint':None,'SMA_rcontrol_kp':None,'SMA_rcontrol_ki':None,'SMA_rcontrol_kd':None, 'vld_scalar':None,'vld_offset':None,'r_sns_ohms':[],'amp_gain':[],'af_mohms':[],'delta_mohms':[]}
+
+    def attach(self, masternode:Node, portNum:int=-1):
+        if portNum != -1: # Makes portNum optional
+            self.portNum = portNum
+        masternode.attachMuscle(self, self.portNum)
 
     def muscleStatus(self):
         status = ""
@@ -445,7 +451,7 @@ class Muscle:
         mode = command_t.modedef.index(self.cmode) 
 
         if out == 0:
-            muscle = self.idnum
+            muscle = self.portNum
             self.masternode.setMode(mode, muscle)
         elif out == 1:
             return mode
@@ -459,7 +465,7 @@ class Muscle:
         
         if not setpoint:
             raise KeyError("Command 'setSetpoint' requires setpoint argument.")
-        self.masternode.setSetpoint(mode, self.idnum, setpoint)      
+        self.masternode.setSetpoint(mode, self.portNum, setpoint)      
     
     def setEnable(self, bool):
         '''

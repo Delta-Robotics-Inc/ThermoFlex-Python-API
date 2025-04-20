@@ -17,5 +17,3 @@ src/thermoflex/tools/debug.py
 src/thermoflex/tools/nodeserial.py
 src/thermoflex/tools/packet.py
 src/thermoflex/tools/tfnode_messages_pb2.py
-src/thermoflex/tools/test/nodetestingscript.py
-src/thermoflex/tools/test/testcommands.py

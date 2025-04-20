@@ -2,7 +2,7 @@ import thermoflex as tf
 from threading import Timer
 import time as t
 network = tf.discover()
-tf.Debugger.DEBUG_PRINT = False
+tf.Debugger.ENABLED = False
 net1 = network[0]
 t.sleep(2)
 print(network)

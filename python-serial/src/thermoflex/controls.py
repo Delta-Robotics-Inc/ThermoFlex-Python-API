@@ -42,7 +42,7 @@ def check_serial_permissions():
 
 
 
-def discover(proid = prod): 
+def discover(proid = prod) -> list[NodeNet]: 
     '''
     
     Takes node-object idnumber and tries to find corresponding port.

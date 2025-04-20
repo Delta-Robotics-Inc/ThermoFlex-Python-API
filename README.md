@@ -36,67 +36,70 @@ pip install --editable .\python-serial\    # OR Install for developement (change
 
 # Launch and Use
 
- Import the thermoflex library and use .discover() to find our product. 
+ Import the thermoflex library and use .discover() to find your Node Controller. 
  
+The `tf.discover()` method searches for USB devices with the Node Controller signature, creating a "NodeNet" object for each one found. A NodeNet represents a network of one or more Node Controllers, where additional devices can be connected via CAN bus to the primary USB-connected node. This allows you to control an entire network of nodes through a single USB connection.
+
+For most users working with a single node, you can simply access the first node in the network:
+
 ```python
 import thermoflex as tf
-
-netlist = tf.discover()
-network1 = netlist[0]
+network = tf.discover()[0] # Find all Node networks over USB and connects to the first one found (0th index)
+node0 = network.node_list[0]  # Access the first node in the network
 ```
 
-This will return a list of [NodeNet](#nodenet-commands)-objects. Each [NodeNet](#nodenet-commands) contains a list of [Node](#node-commands)-objects connected at initialization as well as a broadcast [Node](#node-commands) and a self [Node](#node-commands) device. From here you will be able to assign nodes to variables using the .getDevice() command.
+For advanced users working with multiple nodes, you have several options:
+- Access specific nodes by their position in the network's node list
+- Identify nodes by testing messages to determine which node responds
+- Each node has a permanent unique ID number accessible using `node.id`. You can identify the Node that you want this way after seeing it respond.
 
-``` Python
-node0 = network1.node_list[0]
-```
+Additionally, each NodeNet provides two special Node objects:
+- `network.self_node`: Direct access to the node connected via USB
+- `network.broadcast_node`: Send commands to all nodes in the network simultaneously
 
-You can also assign the broadcast node and self node by calling a [NodeNet](#nodenet-commands)'s .broadcast_node and .self_node. 
-
-``` Python
-node_b = network1.broadcast_node
-node_s = network1.self_node
-```
-
-Once you have your connected node bound, you can call its status, reset and logging commands. To use the muscles, you need to create [Muscle](#muscle-commands) objects
+Once you have your connected node bound, you can call its status, reset and logging commands. To use the muscles, you need to create [Muscle](#muscle-commands) objects.
 
 
-
-To create [Muscle](#muscle-commands)-class objects, start by calling tf.muscle(). This is where you need input your *idnum*, *resistance*, *length*, and *diameter* values if you have them. 
+To create [Muscle](#muscle-commands)-class objects, start by calling tf.muscle(). This is where you need input your `portNum` that you want the muscle to connect to (0=M1 and 1=M2 when looking at the phyisical Node Controller port labels)
 
 
 ``` Python
-muscle1 = tf.muscle(idnum = 0, resist= 300, diam= 2, length= 150)
-muscle2 = tf.muscle(idnum = 1, resist= 290, diam= 2, length= 145)
+muscle1 = tf.Muscle(portNum=0, masternode=node0)
+muscle2 = tf.Muscle(portNum=1) # You can make an orphaned muscle
 ```
 
-Note that the *idnum* field is the only field that is neccesary for creating the [Muscle](#muscle-commands)-object.
-
-Next, assign the muscle objects to a node object by calling the .setMuscle() command. This command takes the identification number and the muscle object as arguments
-
+All Muscle objects need to be attached to a Node to operate correctly. This can be done at initialization (like muscle1 above) or by using one of the following methods:
 ```Python
-node0.setMuscle(0, muscle1)
-node0.setMuscle(1, muscle2)
+node0.attachMuscle(muscle2, 1)
+# OR
+muscle2.attach(node0, 1)
 ```
 
-Sessions are automatically created and create a filesystem that exports to a higher level folder. Sessions track the incoming and outgoing serial data and saves it to a .ses file and a .txt file. The .txt files are generated as plain messages, where as the .ses files have serialized messages. 
+From here, you can send the Node and Muscles commands.
+
+**Command Formats:**
+- [Node Commands](#node-commands)
+- [Muscle Commands](#muscle-commands)
+
+These commands should be in the format:
+```Python
+muscle1.enable()  # Muscle command
+
+node0.enable(muscle1)  # Node command version (does the same thing)
+```
+
+Note that for all `Muscle` commands, there exists a similar method in the `Node` object
+
+### Sessions (experimental)
+
+Our built-in session logging system can create a filesystem that exports to a higher level folder. Sessions track the incoming and outgoing serial data and saves it to a `.ses`, storing Node network and send/received packet information. This data can be analyzed by the `SessionAnalyzer` class. **Note: This feature is experimental. Feel free to create your own logging logic in your scripts.**
 
 ```Python
 sessionl = tf.Session.sessionl
 session1 = session[0]
 ```
 
-From here, you can add commands to your command buffer. [Node Commands](#node-commands)
-
-These commands should be in the format,
-
-```Python
-node0.enable(muscle1)
-```
-
-The muscle objects also have their own commands that are passed to their commanding node.[Muscle Commands](#muscle-commands)
-
-Developer install instructions
+### Developer install instructions
 
 for testing purposes, use the command
 ```
@@ -141,7 +144,7 @@ with $SRC being the path to the [python-serial](python-serial/) folder. This wil
 | setLogmode(mode)                     | Sets the logging mode of the node; mode:(0:'none', 1:'compact', 2:'dump', 3:'readable dump')                                              |
 | setMode(conmode, device)             | Sets the input mode of the node; conmode : (percent, volts, amps, ohms, train); device : (all,node,m1,m2,...,m*n*)                        |
 | setSetpoint(musc, conmode, setpoint) | Sets the point at which the node actuates to; musc: *muscle id number*; conmode : (percent, volts, amps, ohms, train); setpoint : *float* |
-| setMuscle(idnum,muscle)              | Assigns a muscle to the node; will have presets in the future                                                                             |
+| setMuscle(portNum,muscle)              | Assigns a muscle to the node; will have presets in the future                                                                             |
 | enable(muscle)                       | Enables the selected muscle to act on the value set by setSetpoint(); enable : (*muscle object*)                                          |
 | enableAll                            | Enables all connected muscles of the node                                                                                                 |
 | disable(muscle)                      | Disables the selected muscle : (m1,m2,...,m*n*)                                                                                           |

@@ -12,9 +12,11 @@ from .devices import Node
 base_path = os.getcwd().replace("\\","/") + '/ThermoflexSessions' #set base filepath
 sess_filepath = os.getcwd().replace("\\","/") #new directory filepath
 
-#TODO: logger class; wraps short and long term logging;
-# Pandas rolling buffer of recent data and file logging of current data
 class Logger:
+    '''
+    Logger class; wraps short and long term logging;
+    Pandas rolling buffer of recent data and file logging of current data
+    '''
     def __init__(self,session):
         self.session = session
         self.location = session.environment
@@ -53,7 +55,7 @@ class Logger:
                     node = None
                     if not logmsg.message_address == 0: # checks for sender id    
                         for nood in Node.nodel:
-                            if nood.node_id == logmsg.message_address:
+                            if nood.id == logmsg.message_address:
                                 node = nood
                         
                     if node:
@@ -99,7 +101,7 @@ class Session:
     sessionl = []
     sescount = len(sessionl)    
     # debug_node = Node('DEBUG')
-    # debug_node.node_id = 'DEBUG'
+    # debug_node.id = 'DEBUG'
     
     def __init__(self, network,iden = sescount+1): 
         self.id = iden
@@ -140,7 +142,7 @@ class Session:
         logmsg = None
         if logtype == 0:
             logmsg = LogMessage('SENT',cmd.construct)
-            sender_id_int = int.from_bytes(cmd.destnode.node_id, byteorder='big')
+            sender_id_int = int.from_bytes(cmd.destnode.id, byteorder='big')
             logmsg.message_address = sender_id_int
         elif logtype == 1:
             logmsg = LogMessage('RECEIVED', cmd['payload']) # creates log message object

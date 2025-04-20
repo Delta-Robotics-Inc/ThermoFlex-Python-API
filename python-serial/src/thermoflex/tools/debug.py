@@ -11,7 +11,7 @@ DEBUG_LEVELS = {
 class Debugger:
     TF_DEBUG_LEVEL = DEBUG_LEVELS['ERROR']
     DEBUG_LOG = False
-    DEBUG_PRINT = True
+    ENABLED = True
     DEBUG_SESSION = None
     ROLLING_LOG = []  
 
@@ -24,7 +24,7 @@ class Debugger:
     def debug(level, process_name ,message):
         if Debugger.TF_DEBUG_LEVEL >= level:
             level_name = [key for key, value in DEBUG_LEVELS.items() if value == level][0]
-            if Debugger.DEBUG_PRINT == True:    
+            if Debugger.ENABLED == True:    
                 print(message) # For now, just print the message.  If you want the level displayed, use the line below
                 #print(f"{level_name}: [{process_name}] | {message}")
 
@@ -41,7 +41,7 @@ class Debugger:
     def debug_raw(level, message):
         if Debugger.TF_DEBUG_LEVEL >= level:
             Debugger.ROLL((level,message))
-            if Debugger.DEBUG_PRINT == True: 
+            if Debugger.ENABLED == True: 
                 print(message, end='')
             if Debugger.DEBUG_LOG == True: Debugger.DEBUG_SESSION.logging((level,message.replace('\n','|')),3)
     

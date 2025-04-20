@@ -46,7 +46,7 @@
 | setLogmode(mode)                     | Sets the logging mode of the node; mode:(0:'none', 1:'compact', 2:'dump', 3:'readable dump')                                              |
 | setMode(conmode, device)             | Sets the input mode of the node; conmode : (percent, volts, amps, ohms, train); device : (all,node,m1,m2,...,m*n*)                        |
 | setSetpoint(musc, conmode, setpoint) | Sets the point at which the node actuates to; musc: *muscle id number*; conmode : (percent, volts, amps, ohms, train); setpoint : *float* |
-| setMuscle(idnum,muscle)              | Assigns a muscle to the node; will have presets in the future                                                                             |
+| attachMuscle(portNum,muscle)              | Assigns a muscle to the node; will have presets in the future                                                                             |
 | enable(muscle)                       | Enables the selected muscle to act on the value set by setSetpoint(); enable : (*muscle object*)                                          |
 | enableAll()                          | Enables all connected muscles of the node                                                                                                 |
 | disable(muscle)                      | Disables the selected muscle : (m1,m2,...,m*n*)                                                                                           |
@@ -60,7 +60,7 @@
 | .net                | the connected network                                                          |
 | .arduino            | the serial port information and address                                        |
 | .logmode            | integer logmode for internal use                                               |
-| .node_id            | the id number of the connected node                                            |
+| .id                 | the id number of the connected node                                            |
 | .canid              | the id specific to the Can bus of the connected node;seperate from the node id |
 | .firmware           | the firmware number of the connected node                                      |
 | .board_version      | the board version of the connected node                                        |
@@ -84,7 +84,7 @@
 
 | **Muscle Attributes** | Purpose                                                    |
 | --------------------- | ---------------------------------------------------------- |
-| .idnum                | id number of the muscle connected to the node              |
+| .portNum                | id number of the muscle connected to the node              |
 | .mosfetnum            | number of the mosfet port that the muscle is connected to. |
 | .resistance           | restance value of the muscle                               |
 | .diameter             | diameter of the muscle                                     |

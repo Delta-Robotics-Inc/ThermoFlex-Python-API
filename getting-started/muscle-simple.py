@@ -27,8 +27,8 @@ tf.delay(1) # Wait for the devices to be discovered
 
 node = node_net.node_list[0]  # Get the first connected Node
 
-muscle = tf.Muscle(idnum = 0)  # Match idnum to the muscle port number 0=M1, 1=M2
-node.setMuscle(0, muscle)  # Assign the muscle to the Node at port 0
+muscle = tf.Muscle(_port = 0)  # Match portNum to the muscle port number 0=M1, 1=M2
+node.attachMuscle(muscle, 0)  # Assign the muscle to the Node at port 0
 
 # Move the Muscle
 muscle.setMode("percent")

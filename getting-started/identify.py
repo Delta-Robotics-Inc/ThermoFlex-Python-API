@@ -10,7 +10,7 @@ time.sleep(1) # Wait for the devices to be discovered
 print("Detected Nodes:")
 for node in node_net.node_list:
     # Print the list of Nodes on the network in X.X.X syntax
-    print(f'Node: {node.node_id[0]}.{node.node_id[1]}.{node.node_id[2]}')
+    print(f'Node: {node.id[0]}.{node.id[1]}.{node.id[2]}')
 
 time.sleep(1)
 tf.endAll()
