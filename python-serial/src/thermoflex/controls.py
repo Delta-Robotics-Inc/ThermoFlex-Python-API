@@ -1,4 +1,3 @@
-
 from .network import NodeNet
 from .devices import Node
 from .sessions import Session
@@ -76,45 +75,76 @@ def discover(proid = prod) -> list[NodeNet]:
         raise ImportError('There are no connected nodes.')
     else:
         return NodeNet.netlist
+    
+
+# Helper function for single node discovery
+def get_usb_node(bus_id=105, timeout=5.0, poll_interval=0.1):
+    """
+    Discover USB network and return the first available node, waiting up to `timeout` seconds.
+
+    Args:
+        bus_id (int): USB bus ID to search.
+        timeout (float): Maximum time in seconds to wait for a device.
+        poll_interval (float): Interval between checks in seconds.
+
+    Returns:
+        Node object if found, else raises TimeoutError.
+    """
+    node_net = discover([bus_id])[0]
+    node_net.refreshDevices()
+
+    start_time = t.time()
+    while t.time() - start_time < timeout:
+        if node_net.node_list:
+            print(f"Found node on USB bus at port {node_net.port}")
+            return node_net.node_list[0]
+        t.sleep(poll_interval)
+
+    raise TimeoutError(f"No nodes discovered on USB bus {bus_id} within {timeout} seconds.")
+
      
 #------------------------------------------------------------------------------------
 
-@threaded
-def timer(time):# TODO: seperate event flag f
-    global timeleft
-    timeleft = time
-    for x in range(time):
-        timeleft-=1
-        t.sleep(1)
-    if stop_threads_flag.is_set: return    
-    else:
-        stop_threads_flag.clear()
+# @threaded
+# def timer(time):# TODO: seperate event flag f
+#     global timeleft
+#     timeleft = time
+#     for x in range(time):
+#         timeleft-=1
+#         t.sleep(1)
+#     if stop_threads_flag.is_set: return    
+#     else:
+#         stop_threads_flag.clear()
 
-def update():
-    '''
+# def update():
+#     '''
     
-    Updates all networks in the list to send commands and receive data
+#     Updates all networks in the list to send commands and receive data
     
-    '''  
-    for net in NodeNet.netlist:
-        net.refreshDevices()
+#     '''  
+#     for net in NodeNet.netlist:
+#         net.refreshDevices()
 
-def updatenet(network:object): #choose which node to update and the delay
-    '''
+# def updatenet(network:object): #choose which node to update and the delay
+#     '''
     
-    Updates a specific network.
+#     Updates a specific network.
     
-    '''  
-    network.refreshDevices()
+#     '''  
+#     network.refreshDevices()
         
+# def delay(time):
+#     global timeleft
+#     timeleft = time
+#     while timeleft > 0:
+#         timeleft -= 1
+#         for net in NodeNet.netlist:
+#             updatenet(net)
+#         t.sleep(1)
+
 def delay(time):
-    global timeleft
-    timeleft = time
-    while timeleft > 0:
-        timeleft -= 1
-        for net in NodeNet.netlist:
-            updatenet(net)
-        t.sleep(1)
+    print("tf.delay() is deprecated. Use time.sleep() instead.")
+    t.sleep(time)
         
 def endsession(session:object):
     session.end()

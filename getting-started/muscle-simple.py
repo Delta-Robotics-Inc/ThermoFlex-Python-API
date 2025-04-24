@@ -20,30 +20,30 @@ import time
 
 # tf.set_debug_level("DEBUG") # Use for debug if needed
 
-node_net = tf.discover([105])[0]  # Discover networks over USB and get the first one
-
-node_net.refreshDevices()  # Discover all Node devices on the selected network
-tf.delay(1) # Wait for the devices to be discovered
-
-node = node_net.node_list[0]  # Get the first connected Node
+node = tf.get_usb_node() # Discover the first connected node over USB
 
 muscle = tf.Muscle(_port = 0)  # Match portNum to the muscle port number 0=M1, 1=M2
 node.attachMuscle(muscle, 0)  # Assign the muscle to the Node at port 0
 
 # Move the Muscle
+# NOTE: THESE VALUES ARE FOR THE MK.1 MUSCLE WITH A 12 V SUPPLY
+# IF USING A HIGHER SUPPLY, START WITH A SMALL TIME AND INCREASE SLOWLY
+# BE READY TO CUT OFF THE POWER IF THE MUSCLE GETS TOO HOT
+print("Activating muscle... ")
 muscle.setMode("percent")
-muscle.setSetpoint("percent", 0.1)
+muscle.setSetpoint("percent", 0.5) # Start at 50%
 muscle.setEnable(True)
-tf.delay(2)
-muscle.setSetpoint("percent", 0.3)
-tf.delay(2)
-muscle.setSetpoint("percent", 0.4)
-tf.delay(2)
-muscle.setSetpoint("percent", 0.5)
+time.sleep(2)
+muscle.setSetpoint("percent", 0.4) # Ramp down to 40%
+time.sleep(2)
+muscle.setSetpoint("percent", 0.3) # Ramp down to 30%
+time.sleep(2)
+muscle.setSetpoint("percent", 0.1) # Ramp down to 10%
 
-tf.delay(4)  # Increase if needed but be careful!  There is no safegaurd to prevent the muscle from overheating
+time.sleep(4)  # Increase if needed but be careful!  There is no safegaurd to prevent the muscle from overheating
 
+print("Deactivating muscle... ")
 node.disableAll()
 
-tf.delay(1)
+time.sleep(0.1) # Make sure to wait a small amount of time after disabling the muscle for messages to be sent
 tf.endAll()

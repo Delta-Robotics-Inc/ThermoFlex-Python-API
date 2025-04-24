@@ -120,19 +120,23 @@ class Session:
             fpath = os.path.exists(self.environment)
             #print(fpath) #DEBUG
             if fpath == False:
-                
                 self.setlogpath()
- 
-        finally:
-            
+
             os.chdir(self.environment)
-    
+        except:
+            print("Session launch failed")
+            Session.session1.remove(self)
+            del self
+            return    
     def end(self): #ends the session
         try:
             sh.copytree(f'{self.environment}/logs' , f'{base_path}/session{self.id}log', dirs_exist_ok = True)
             sh.rmtree(self.environment)
+            print(f'Session log saved to {base_path}/session{self.id}log')
         except PermissionError:
             print('Permission Error: Cannot remove session directory')
+        except FileNotFoundError:
+            print('FileNotFoundError: Session directory not found and cannot be saved')
         except Exception as e:
             print(f'Error: {e}')
             raise

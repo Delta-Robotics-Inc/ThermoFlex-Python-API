@@ -91,7 +91,7 @@ class NodeNet:
         '''
         #self.node_list = [] # Clear the list of connected nodes... should this be done?
         self.broadcast_node.status('compact') #broadcasts status to all devices
-        t.sleep(0.1) # Await for responses
+        # t.sleep(0.1) # Await for responses
         # If blocking, then we know that the device list is updated when the function returns.
     
     def addNode(self, id):

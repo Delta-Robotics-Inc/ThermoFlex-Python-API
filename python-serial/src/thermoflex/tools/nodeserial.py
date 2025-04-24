@@ -2,10 +2,16 @@ import sys
 import serial as s
 import time as t
 import struct as st
+
 from .packet import parse_packet, command_t, STARTBYTE
 from .debug import Debugger as D, DEBUG_LEVELS
 import threading as thr
 from enum import Enum
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..network import NodeNet  # Only imported for type checking
 
 stop_threads_flag = thr.Event() # Flag to stop all threads when the thread is ready to close
 
@@ -148,9 +154,11 @@ class Receiver:
         return None
 
 @threaded
-def serial_thread(network):
+def serial_thread(network : "NodeNet"):
 
     receiver = Receiver(network)
+    current_time = t.time()
+    device_refresh_interval = 5
 
     while True:
         try: 
@@ -179,6 +187,10 @@ def serial_thread(network):
         except IndexError:
             #print('No data') #DEBUG
             pass
+
+        if t.time() - current_time >= device_refresh_interval:
+            network.refreshDevices()
+            current_time = t.time()
 
     stop_threads_flag.clear() # Clear the flag to signal that the thread has ended
 
