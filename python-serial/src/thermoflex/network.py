@@ -34,11 +34,7 @@ class NetManager:
         while NET_MANAGER_FLAG.is_set() == False:
             
             checklist = NodeNet.netlist.copy()
-            for net in checklist:
-                # for cmd in net.rec_cmd_buff:
-                #     net.disperse(cmd)
-                #     del net.rec_cmd_buff[cmd]
-                
+            for net in checklist:                
                 try:
                     net.update_network()
                 except TypeError:
@@ -106,7 +102,6 @@ class NodeNet:
         D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Removing node: {id}")
         for node in self.node_list:
             if node.id == id:
-                self.node_list.remove(node)
                 node.endself()
 
     def getDevice(self, id):
