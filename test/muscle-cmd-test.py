@@ -4,6 +4,7 @@ Unit test for all muscle commands and status variables
 import thermoflex as tf
 import threading as th
 import time as t
+import sys
 
 COMMAND_CHANGE_INTERVAL = 5
 STATUS_THREAD_INTERVAL =  10
@@ -23,9 +24,9 @@ def threaded(func):
     return wrapper
 
 #Establish a connection to the testnet and testnode
-network = tf.discover()
-testnet = network[0]
-testnode = testnet.node_list[0]
+# networklist = tf.discover()
+# testnet = networklist[0]
+testnode = tf.get_usb_node()
 
 #Test the muscle command and status variables
 
@@ -60,20 +61,21 @@ def muscle_status_test(muscle):
         
     while not END_TEST_FLAG.is_set():
         t.sleep(STATUS_THREAD_INTERVAL)
+        status = muscle.SMA_status
         # Get the current setpoint of the muscle
-        setpoint = muscle.getSetpoint()
+        setpoint = status['SMA_deafult_setpoint']
         print(f"Muscle Setpoint: {setpoint}")
 
         # Get the current mode of the muscle
-        mode = muscle.getMode()
+        mode = status['SMA_default_mode']
         print(f"Muscle Mode: {mode}")
 
         # Get the current current of the muscle
-        current = muscle.getCurrent()
+        current =status['load_amps']
         print(f"Muscle Current: {current}")
 
         # Get the current voltage of the muscle
-        voltage = muscle.getVoltage()
+        voltage = status['load_voltdrop']
         print(f"Muscle Voltage: {voltage}")
         # Get the muscle status
         
@@ -90,7 +92,13 @@ def muscle_status_test(muscle):
 muscle_status_test(muscle1)
 test_muscle_cmd(muscle1)
     
-
+t.sleep(60)
+END_TEST_FLAG.set()
+t.sleep(5)
+tf.endAll()
 
 for thread  in threadlist:
     thread.join()
+
+
+sys.exit(0)
