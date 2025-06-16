@@ -13,6 +13,10 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..network import NodeNet  # Only imported for type checking
 
+# ANSI color codes
+GRAY = "\033[90m"  # Bright black/gray color
+RESET = "\033[0m"  # Reset color
+
 stop_threads_flag = thr.Event() # Flag to stop all threads when the thread is ready to close
 
 def threaded(func):
@@ -91,9 +95,9 @@ class Receiver:
 
         #try:
         if port.in_waiting > 0:
-            D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"\nReading incoming data from network {self.network.idnum}:")
+            D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"\n{GRAY}Reading incoming data from network {self.network.idnum}:{RESET}")
         elif len(self.node_debug_str) > 0: # If there is no incoming data, but there is debug data, print the debug data
-            D.debug_raw(DEBUG_LEVELS['DEVICE'], self.node_debug_str)
+            D.debug_raw(DEBUG_LEVELS['DEVICE'], f"{GRAY}{self.node_debug_str}{RESET}")
             self.node_debug_str = ""
         while port.in_waiting > 0:
             
@@ -109,7 +113,7 @@ class Receiver:
 
             if self.state == ReceptionState.WAIT_FOR_START_BYTE:
                 if byte == STARTBYTE:
-                    D.debug(DEBUG_LEVELS['DEVICE'], "SerialThread", self.node_debug_str)
+                    D.debug(DEBUG_LEVELS['DEVICE'], "SerialThread", f"{GRAY}{self.node_debug_str}{RESET}")
                     self.node_debug_str = ""
                     #debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Start Byte Found: {byte}")
                     self.packetData.clear()
@@ -122,7 +126,7 @@ class Receiver:
                     self.node_debug_str += chr(byte)
                     if len(self.node_debug_str) > 100:
                         #print(node_debug_str, end="")
-                        D.debug_raw(DEBUG_LEVELS['DEVICE'], self.node_debug_str)
+                        D.debug_raw(DEBUG_LEVELS['DEVICE'], f"{GRAY}{self.node_debug_str}{RESET}")
                         self.node_debug_str = ""
 
             elif self.state == ReceptionState.READ_LENGTH:
@@ -137,7 +141,7 @@ class Receiver:
                 self.packetData.append(byte)
                 if len(self.packetData) == 3 + self.packetLength:
                     # Process the packet using the external parse_packet function
-                    D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Parsing Incoming: {self.packetData}")
+                    D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"{GRAY}Parsing Incoming: {self.packetData}{RESET}")
                     packet = parse_packet(self.packetData, self.packetLength)
                     if packet is not None:
                         # Packet parsed successfully, return it
@@ -179,7 +183,7 @@ def serial_thread(network : "NodeNet"):
 
         try:
             cmd = network.command_buff[0]
-            D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"Sending command to Network {network.idnum}")
+            D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"{GRAY}Sending command to Network {network.idnum}{RESET}")
             #print(cmd.construct) #DEBUG
             send_command(cmd,network)
             network.sess.logging(cmd,0)

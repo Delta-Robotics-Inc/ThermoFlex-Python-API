@@ -31,21 +31,59 @@ def enforce_size_limit(data:list,size = 100):
 #---------------------------------------------------------------------------------------
 
 class Node:
-    nodel = []
+    """
+    Device interface class for Thermoflex nodes.
     
-    def __init__(self, i, network=None, mosports:int = 2, n_id = [0x00, 0x00, 0x00], pulse = True): #network status
-        Node.nodel.append(self)
+    The Node class represents a single Thermoflex device on the network and provides
+    the interface for controlling and monitoring the device. It handles all device-level
+    operations including:
+    - Device control and status monitoring
+    - Muscle management and control
+    - Device state tracking
+    - Command generation and buffering
+    
+    The class maintains the device's state including:
+    - Device identification and status
+    - Connected muscles and their states
+    - Control modes and setpoints
+    - Heartbeat and communication status
+    
+    Device Control:
+        - Status monitoring and reporting
+        - Mode and setpoint control
+        - Muscle enable/disable control
+        - Device reset and configuration
+        
+    Muscle Management:
+        - Muscle attachment and configuration
+        - Muscle state tracking
+        - Muscle control and monitoring
+        - Muscle status reporting
+        
+    State Management:
+        - Device status tracking
+        - Heartbeat monitoring
+        - Communication state
+        - Error tracking and reporting
+        
+    The Node class is designed to be a pure device interface, with all network
+    management handled by the NodeNet class. It focuses on providing a clean API
+    for device control and monitoring.
+    """
+    nodel = []  # List of all active nodes
+    forgotten_nodes = []  # List of inactive/forgotten nodes
+    
+    def __init__(self, i, network=None, mosports:int = 2, n_id = [0x00, 0x00, 0x00], pulse = True):
         self.index = i
-        self.serial = None 
         self.net = network
-        self.arduino = self.net.arduino
+        self.arduino = self.net.arduino if network else None
         self.logmode = 0
         self.id : list[int] = n_id
         self.canid = None
         self.firmware = None
         self.board_version = None
         self.node_status = {'uptime':None, 'errors':[],'volt_supply':None,'pot_values':None,'log_interval':None,'vrd_scalar':None,'vrd_offset':None,'max_current':None,'min_v_supply':None}
-        self.mosports = mosports  #mosfet ports
+        self.mosports = mosports
         self.muscles = {}
         self.logstate = {'printlog':False, 'binarylog':False, 'filelog': False}
         self.status_curr = None
@@ -58,17 +96,74 @@ class Node:
         self.muscle1 = Muscle(1, self)
         self.muscles = {"0":self.muscle0, "1":self.muscle1}
 
-        #set Heartbeat
-        self.msgsent = False
-        self.msgrec = True
+        # Heartbeat system
+        self.last_heartbeat_received = None  # Timestamp of last heartbeat received from node
+        self.last_heartbeat_sent = None      # Timestamp of last heartbeat sent to node
+        self.heartbeat_timeout = 5.0         # Timeout in seconds before node is considered inactive
+        self.is_active = True                # Flag to track if node is currently active
+        self.missed_heartbeats = 0           # Counter for missed heartbeats
+        self.max_missed_heartbeats = 3       # Maximum allowed missed heartbeats before marking as inactive
+
+        # Message tracking
+        self.msgsent = False  # Flag to track if a message was sent to this node
+        self.msgrec = True    # Flag to track if a message was received from this node
         if pulse == True:
-            self.heartbeat = True
+            # Initialize heartbeat system for this node
+            self.heartbeat = True  # Enable heartbeat monitoring for this node
+            # Create a heartbeat command that will be sent periodically
             self.pulse = command_t(self, name = "heartbeat", params = [])
-            self.tlastmsgrec = None
-            self.tlastmsgsent = None
+            # Timestamps for tracking last message sent/received
+            self.tlastmsgrec = None  # Time of last message received from node
+            self.tlastmsgsent = None # Time of last message sent to node
 
+    def update_heartbeat(self, received=True):
+        """Update heartbeat timestamps and status"""
+        current_time = t.time()
+        if received:
+            self.last_heartbeat_received = current_time
+            self.missed_heartbeats = 0
+        else:
+            self.last_heartbeat_sent = current_time
 
-  
+    def check_heartbeat_status(self) -> bool:
+        """Check if node has missed heartbeats"""
+        if not self.is_active:
+            return False
+
+        current_time = t.time()
+        if self.last_heartbeat_received is None:
+            return True  # Node hasn't sent any heartbeats yet
+
+        time_since_last = current_time - self.last_heartbeat_received
+        if time_since_last > self.heartbeat_timeout:
+            self.missed_heartbeats += 1
+            if self.missed_heartbeats >= self.max_missed_heartbeats:
+                return False
+        return True
+
+    def deactivate(self):
+        """Mark node as inactive"""
+        if self.is_active:
+            self.is_active = False
+            self.disableAll()  # Disable all muscles when deactivating
+            D.debug(DEBUG_LEVELS['WARNING'], "Node", f"Node {self.id} marked as inactive after {self.missed_heartbeats} missed heartbeats")
+
+    def reactivate(self):
+        """Reactivate a previously inactive node"""
+        if not self.is_active:
+            self.is_active = True
+            self.missed_heartbeats = 0
+            D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id} reactivated")
+
+    def cleanup(self):
+        """Clean up node resources"""
+        self.disableAll()  # Ensure all muscles are disabled
+        for m in self.muscles.values():
+            del m
+        self.muscles.clear()
+        self.bufflist.clear()
+        self.node_status.clear()
+
     def testMuscles(self, sendformat:int = 1):
         '''
         
@@ -131,35 +226,18 @@ class Node:
         
         self.closePort()
         
-    def status(self,type):
-        '''
-        
-        Requsts and collects the status from the device.
-                
-        '''
+    def status(self, type):
+        """Request and collect status from the device"""
         if type == 'dump':
-            try:
-                self.net.openPort()
-            finally:
-                status = command_t(self, name = 'status', params = [2])
-                #send_command(status,self.net)
-                #send_command_str(status,self.net)
-                self.net.command_buff.append(status)
-                t.sleep(0.5)
-                
-                return self.status_curr
-
+            status = command_t(self, name = 'status', params = [2])
+            self.net.command_buff.append(status)
+            t.sleep(0.5)
+            return self.status_curr
         elif type == 'compact':
-            try:
-                self.net.openPort()
-            finally:
-                status = command_t(self, name = 'status', params = [1])
-                #send_command(status,self.net)
-                #send_command_str(status,self.net)
-                self.net.command_buff.append(status)
-                t.sleep(0.5)
-
-                return self.status_curr
+            status = command_t(self, name = 'status', params = [1])
+            self.net.command_buff.append(status)
+            t.sleep(0.5)
+            return self.status_curr
 
     def getStatus(self):
         return self.status_curr
@@ -210,29 +288,12 @@ class Node:
         self.status_curr = f'Node{self.index}, Address:{self.id}, Firmware:{self.firmware}, Board version:{self.board_version}, {status_str}'
 
     def reset(self, device = "node"):
-        '''
-        Sends the reset command to the node
-        '''
-        try:
-            self.net.openPort()
-        finally:
-            reset = command_t(self, name = 'reset', params = [], device = device)
-            send_command(reset,self.net)
-            #send_command_str(reset)
- 
+        """Send reset command to the node"""
+        reset = command_t(self, name = 'reset', params = [], device = device)
+        self.net.command_buff.append(reset)
+
     def setLogmode(self, mode:int):
-        '''
-        Sets the log staus of the node.
-        
-        Parameters
-        ----------
-        mode 
-            0:none
-            1:compact
-            2:dump
-            3:readable dump     
-    
-        '''
+        """Set the log status of the node"""
         self.logmode = mode
         command = command_t(self, name = LOGMODE, device = "all", params = [mode])
         self.net.command_buff.append(command)
@@ -378,11 +439,15 @@ class Node:
 
     
     def endself(self):
+        """Clean up node resources and remove from appropriate lists"""
         for m in self.muscles:
             del m
         try:
             self.net.node_list.remove(self)
-            Node.nodel.remove(self)
+            if self in Node.nodel:
+                Node.nodel.remove(self)
+            if self in Node.forgotten_nodes:
+                Node.forgotten_nodes.remove(self)
         except:
             pass
         del self                                                             

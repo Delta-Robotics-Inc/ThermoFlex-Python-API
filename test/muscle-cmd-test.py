@@ -11,6 +11,8 @@ STATUS_THREAD_INTERVAL =  10
 END_TEST_FLAG = th.Event()
 END_TEST_FLAG.clear()
 
+tf.set_debug_level('DEVICE')
+
 def threaded(func):
     global threadlist
     threadlist = []
