@@ -8,7 +8,8 @@ from datetime import datetime as dt
 from .tools.nodeserial import threaded, stop_threads_flag
 from .tools.packet import deconst_serial_response, DATATYPE, LogMessage
 from .tools.debug import Debugger as D, DEBUG_LEVELS
-from .devices import Node
+import time as t
+
 base_path = os.getcwd().replace("\\","/") + '/ThermoflexSessions' #set base filepath
 sess_filepath = os.getcwd().replace("\\","/") #new directory filepath
 
@@ -21,6 +22,8 @@ class Logger:
         self.session = session
         self.location = session.environment
         self.local = []
+        self.log_interval = 1.0  # Default log interval in seconds
+        self.logfile = None
 
     def rollinglog(self, data:tuple): #adds data to local rolling buffer 
         self.local.append(data)
@@ -28,73 +31,53 @@ class Logger:
             self.local.pop(0)
 
     @threaded
-    def filelog(self,logmsg): #lo/;pgsg Format: Time, log type, message
-        '''
-        
-        Sends log data to terminal output, directory or file.
-        Writes log data to a file.
-        
-        '''
-        filepath = self.location + '/logs/logdata'
-        timeparse = dt.now()
-        mil = lambda x:int(x)//1000
-        logtime = f'{timeparse.month}/{timeparse.day}/{timeparse.year} {timeparse.hour}:{timeparse.minute}:{timeparse.second}.{mil(timeparse.microsecond)}'
-
-        #t.strftime('%x %X') #time from epoch measure
+    def filelog(self):
+        """Log node data to file"""
+        # Initialize log file
+        filepath = self.location + '/logs/logdata/logdata.txt'
         try:
-            logmsg  # Properly decode and strip the data
-            if not logmsg:
-                pass #does nothing statement upon being empty
+            self.logfile = open(filepath, 'a')
+        except Exception as e:
+            D.debug(DEBUG_LEVELS['ERROR'], "Session", f"Failed to open log file: {e}")
+            return
 
-            else:   
-
-                try: #checks the data type and returns the log string
+        while not stop_threads_flag.is_set():
+            try:
+                # Get all active nodes from all networks in the session
+                active_nodes = []
+                for network in self.session.networks:
+                    if hasattr(network, 'get_all_nodes'):
+                        active_nodes.extend(network.get_all_nodes())
                 
-                    readlog = f'{logtime} {logmsg.message_type} {logmsg.message_address} {logmsg.generated_message}'    
-               
-                    node = None
-                    if not logmsg.message_address == 0: # checks for sender id    
-                        for nood in Node.nodel:
-                            if nood.id == logmsg.message_address:
-                                node = nood
-                        
-                    if node:
-                        if node.logstate['printlog'] == True:
-                            print(readlog)
+                # Log data for each active node
+                for node in active_nodes:
+                    if hasattr(node, 'logstate') and node.logstate.get('filelog', False):
+                        # Get node status
+                        status = node.getStatus() if hasattr(node, 'getStatus') else None
+                        if status:
+                            # Log node status
+                            self.logfile.write(f"{t.time()},{node.id},{status}\n")
+                            
+                            # Log muscle status if available
+                            if hasattr(node, 'muscles') and node.muscles:
+                                for muscle in node.muscles.values():
+                                    if hasattr(muscle, 'SMA_status') and muscle.SMA_status:
+                                        muscle_status = muscle.muscleStatus() if hasattr(muscle, 'muscleStatus') else None
+                                        if muscle_status:
+                                            self.logfile.write(f"{t.time()},{node.id},muscle{muscle.portNum},{muscle_status}\n")
+                
+                if self.logfile:
+                    self.logfile.flush()  # Ensure data is written to disk
+                t.sleep(self.log_interval)
+            except Exception as e:
+                D.debug(DEBUG_LEVELS['ERROR'], "Session", f"Error in file logging: {e}")
+                t.sleep(1.0)  # Wait a bit before retrying
+        
+        # Close log file when thread ends
+        if self.logfile:
+            self.logfile.close()
 
-                        if node.logstate['binarylog'] == True:
-                            with open(f'{filepath}/logdata.ses', 'ab') as f:
-                                f.write(bytes(readlog+'\n','ascii'))
-                        
-                        if node.logstate['filelog'] == True:
-                            with open(f'{filepath}/logdata.txt', 'a') as f:
-                                f.write(readlog+'\n')
-                    else:
-                        if self.session.logstate['printlog'] == True:
-                            print(readlog)
-
-                        if self.session.logstate['binarylog'] == True:
-                            with open(f'{filepath}/logdata.ses', 'ab') as f:
-                                f.write(bytes(readlog+'\n','ascii'))
-                        
-                        if self.session.logstate['filelog'] == True:
-                            with open(f'{filepath}/logdata.txt', 'a') as f:
-                                f.write(readlog+'\n')
-
-                except IndexError:
-                    pass
-                except ValueError:
-                    pass  
-
-        finally:
-            if stop_threads_flag.is_set():
-                return
-            else:
-                stop_threads_flag.clear()
-    
     def logging(self, message:LogMessage): #takes session log data and sends to log
-            
-        self.filelog(message)
         self.rollinglog((message.message_type, message.generated_message)) #creates a tuple with the log type and message
 
 class Session: 

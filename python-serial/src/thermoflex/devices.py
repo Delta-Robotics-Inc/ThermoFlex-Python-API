@@ -70,9 +70,6 @@ class Node:
     management handled by the NodeNet class. It focuses on providing a clean API
     for device control and monitoring.
     """
-    nodel = []  # List of all active nodes
-    forgotten_nodes = []  # List of inactive/forgotten nodes
-    
     def __init__(self, i, network=None, mosports:int = 2, n_id = [0x00, 0x00, 0x00], pulse = True):
         self.index = i
         self.net = network
@@ -150,19 +147,18 @@ class Node:
 
     def reactivate(self):
         """Reactivate a previously inactive node"""
-        if not self.is_active:
-            self.is_active = True
-            self.missed_heartbeats = 0
-            D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id} reactivated")
+        self.is_active = True
+        self.missed_heartbeats = 0
+        self.last_heartbeat_received = t.time()
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id} reactivated")
 
     def cleanup(self):
         """Clean up node resources"""
         self.disableAll()  # Ensure all muscles are disabled
         for m in self.muscles.values():
-            del m
+            m.cleanup()
         self.muscles.clear()
-        self.bufflist.clear()
-        self.node_status.clear()
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id} cleaned up")
 
     def testMuscles(self, sendformat:int = 1):
         '''
@@ -171,8 +167,8 @@ class Node:
 
         '''          
         
-        self.net.openPort()
-        mode = command_t.modedef('percent')
+        # Port is already open in network, no need to open it again
+        mode = command_t.modedef.index('percent')
         if sendformat == 1:
             send_command_str(command_t(self,"set-setpoint", [mode ,0.5], device = "m1"),self.net) # make own test command
             send_command_str(command_t(self,"set-setpoint", [mode ,0.5], device = "m2"),self.net)        
@@ -223,30 +219,41 @@ class Node:
             #send_command(command_t(self, "log-mode", [0],device = "all"),self.net)
             #self.logmode = 0
             print("Test complete")
-        
-        self.closePort()
-        
+
     def status(self, type):
         """Request and collect status from the device"""
+        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Requesting {type} status")
+        
         if type == 'dump':
             status = command_t(self, name = 'status', params = [2])
             self.net.command_buff.append(status)
+            D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Added dump status request to command buffer")
             t.sleep(0.5)
             return self.status_curr
         elif type == 'compact':
             status = command_t(self, name = 'status', params = [1])
             self.net.command_buff.append(status)
+            D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Added compact status request to command buffer")
             t.sleep(0.5)
             return self.status_curr
+        else:
+            D.debug(DEBUG_LEVELS['WARNING'], "Node", f"Node {self.id}: Unknown status type '{type}'")
+            return None
 
     def getStatus(self):
+        """Get the current cached status"""
+        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Getting cached status: {self.status_curr}")
         return self.status_curr
     
-    def updateStatus(self,inc_data):
-
+    def updateStatus(self, inc_data):
+        """Update node status from received data"""
+        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Updating status with data: {inc_data}")
+        
         resp_type, resp_data = inc_data
         resp_type = resp_type.split(' ')
+        
         if resp_type[1] == 'node':
+            D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Processing node status update")
             for key in self.node_status.keys():
                 try:
                     if key == 'errors':
@@ -283,9 +290,12 @@ class Node:
                 else:
                     D.debug(DEBUG_LEVELS['ERROR'], 'updateStatus(muscle)', 'Unknown muscle mosport received.')
         else:
-            D.debug(DEBUG_LEVELS['ERROR'], 'updateStatus', 'Incompatible status type.')
+            D.debug(DEBUG_LEVELS['ERROR'], 'updateStatus', f'Incompatible status type: {resp_type}')
+            
+        # Update the status string
         status_str = str(self.node_status).replace('{','').replace('}','').replace("'",'')
         self.status_curr = f'Node{self.index}, Address:{self.id}, Firmware:{self.firmware}, Board version:{self.board_version}, {status_str}'
+        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Updated status_curr: {self.status_curr}")
 
     def reset(self, device = "node"):
         """Send reset command to the node"""
@@ -437,20 +447,13 @@ class Node:
             command = command_t(self, SE, device = f'm{self.muscles[x].portNum+1}', params = [False] )
             self.net.command_buff.append(command)
 
-    
     def endself(self):
-        """Clean up node resources and remove from appropriate lists"""
-        for m in self.muscles:
-            del m
-        try:
-            self.net.node_list.remove(self)
-            if self in Node.nodel:
-                Node.nodel.remove(self)
-            if self in Node.forgotten_nodes:
-                Node.forgotten_nodes.remove(self)
-        except:
-            pass
-        del self                                                             
+        """Clean up node resources and remove from network"""
+        self.cleanup()
+        if self.net:
+            # Let the network handle node removal
+            self.net.remove_node(self.id, deactivate=False)
+        del self
 
     
 #---------------------------------------------------------------------------------------  
@@ -465,22 +468,39 @@ class Muscle:
         self.train_state = None
         self.SMA_status = {'pwm_out':[],'load_amps':[],'load_voltdrop':[],'SMA_default_mode':None,'SMA_deafult_setpoint':None,'SMA_rcontrol_kp':None,'SMA_rcontrol_ki':None,'SMA_rcontrol_kd':None, 'vld_scalar':None,'vld_offset':None,'r_sns_ohms':[],'amp_gain':[],'af_mohms':[],'delta_mohms':[]}
 
+    def cleanup(self):
+        """Clean up muscle resources"""
+        self.enable_status = None
+        self.train_state = None
+        self.SMA_status.clear()
+        D.debug(DEBUG_LEVELS['DEBUG'], "Muscle", f"Muscle {self.portNum} cleaned up")
+
     def attach(self, masternode:Node, portNum:int=-1):
         if portNum != -1: # Makes portNum optional
             self.portNum = portNum
         masternode.attachMuscle(self, self.portNum)
 
     def muscleStatus(self):
-        status = ""
-        for state in status:
-            if type(state) == list:
-                status += f'{state}:{self.SMA_status[state][0]}'
-            else:
-                status += f'{state}:{self.SMA_status[state]}'
-        return status
+        """Get formatted muscle status string"""
+        status_parts = []
+        for key, value in self.SMA_status.items():
+            if isinstance(value, list) and value:
+                # For list values, get the most recent (first) entry
+                status_parts.append(f'{key}:{value[0]}')
+            elif value is not None:
+                # For non-list values
+                status_parts.append(f'{key}:{value}')
+        
+        status_string = ', '.join(status_parts)
+        D.debug(DEBUG_LEVELS['DEBUG'], "Muscle", f"Muscle {self.portNum}: Status = {status_string}")
+        return status_string
     
     def getResistance(self):
-        return self.SMA_status['r_sns_ohms']
+        """Get the most recent resistance reading"""
+        resistance_list = self.SMA_status.get('r_sns_ohms', [])
+        if isinstance(resistance_list, list) and resistance_list:
+            return resistance_list[0]  # Return most recent value
+        return resistance_list  # Return the value as-is if not a list
     
     def changeMusclemos(self, mosfetnum:int):
         '''

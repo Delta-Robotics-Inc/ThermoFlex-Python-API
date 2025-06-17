@@ -29,18 +29,31 @@ class NetManager:
 
     @threaded
     def net_manager_thread():
+        """Thread that manages all networks and ensures heartbeats are sent"""
+        D.debug(DEBUG_LEVELS['INFO'], "NetManager", "Network manager thread started")
         
-        while NET_MANAGER_FLAG.is_set() == False:
-            
-            checklist = NodeNet.netlist.copy()
-            for net in checklist:                
-                try:
-                    net.update_network()
-                except TypeError:
-                    pass
-            if stop_threads_flag.is_set():
-                NET_MANAGER_FLAG.set()
-                break
+        while not NET_MANAGER_FLAG.is_set():
+            try:
+                checklist = NodeNet.netlist.copy()
+                for net in checklist:                
+                    try:
+                        net.update_network()
+                        D.debug(DEBUG_LEVELS['DEBUG'], "NetManager", f"Updated network {net.idnum}")
+                    except Exception as e:
+                        D.debug(DEBUG_LEVELS['ERROR'], "NetManager", f"Error updating network {net.idnum}: {e}")
+                        
+                if stop_threads_flag.is_set():
+                    NET_MANAGER_FLAG.set()
+                    break
+                    
+                # Sleep for a shorter interval to ensure more frequent heartbeat checks
+                t.sleep(0.5)  # Check every 500ms instead of blocking
+                
+            except Exception as e:
+                D.debug(DEBUG_LEVELS['ERROR'], "NetManager", f"Error in network manager thread: {e}")
+                t.sleep(1.0)
+        
+        D.debug(DEBUG_LEVELS['INFO'], "NetManager", "Network manager thread ended")
 
 def sess(net):#create session if one does not exist
     if Session.sescount>0:
@@ -97,7 +110,7 @@ class NodeNet:
     """
     netlist: list['NodeNet'] = [] # Static list of all nodenet objects
     TIMEOUT = 99
-    HEARTBEAT_INTERVAL = 1.0  # Interval between broadcast heartbeats in seconds
+    HEARTBEAT_INTERVAL = 2.0  # Interval between broadcast heartbeats in seconds (reduced from 1.0 to 2.0 to match firmware expectations better)
     NODE_CLEANUP_INTERVAL = 5.0  # Interval between node cleanup checks in seconds
 
     def __init__(self, idnum, port):
@@ -105,6 +118,7 @@ class NodeNet:
         self.idnum = idnum
         self.port = port
         self.arduino = None
+        self.debug_name = f"NodeNet {self.idnum}"  # Initialize debug_name first
         
         # Network management
         self.active_nodes: dict[tuple, 'Node'] = {}  # Dict of active nodes, keyed by node ID tuple
@@ -121,15 +135,40 @@ class NodeNet:
         # Network services
         self.sess = sess(self)
         self.manager = manager(self)
-        self.debug_name = f"NodeNet {self.idnum}"
         
         try:
-            self.openPort()
-        except:
-            print("NodeNet port failed to open.")
+            self.open_port()  # Changed from openPort to open_port for consistency
+        except Exception as e:
+            D.debug(DEBUG_LEVELS['ERROR'], self.debug_name, f"Failed to open port: {e}")
             raise
         self.refreshDevices()
         self.start_serial()
+
+    @property
+    def node_list(self) -> list['Node']:
+        """
+        Property to maintain backward compatibility with code expecting node_list.
+        Returns a list of active nodes.
+        """
+        return list(self.active_nodes.values())
+
+    def open_port(self):
+        """Open the serial port for this network"""
+        try:
+            self.arduino = s.Serial(self.port, 115200, timeout=0.1)
+            D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Opened port {self.port}")
+        except s.SerialException as e:
+            D.debug(DEBUG_LEVELS['ERROR'], self.debug_name, f"Failed to open port {self.port}: {e}")
+            raise
+
+    def close_port(self):
+        """Close the serial port for this network"""
+        try:
+            if self.arduino and self.arduino.is_open:
+                self.arduino.close()
+                D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Closed port {self.port}")
+        except s.SerialException as e:
+            D.debug(DEBUG_LEVELS['WARNING'], self.debug_name, f"Error closing port {self.port}: {e}")
 
     def add_node(self, node_id: list[int]) -> 'Node':
         """
@@ -243,7 +282,7 @@ class NodeNet:
         
         # Close network port
         try:
-            self.closePort()
+            self.close_port()  # Changed from closePort to close_port
         except s.SerialException:
             D.debug(DEBUG_LEVELS['WARNING'], self.debug_name, "Warning: Port not open but attempted to close")
         
@@ -256,27 +295,26 @@ class NodeNet:
         Refreshes the network devices by sending a broadcast status command to the network.
         All devices on the network will respond with their status.
         '''
-        #self.node_list = [] # Clear the list of connected nodes... should this be done?
-        self.broadcast_node.status('compact') #broadcasts status to all devices
-        # t.sleep(0.1) # Await for responses
-        # If blocking, then we know that the device list is updated when the function returns.
-    
+        self.broadcast_node.status('compact')  # broadcasts status to all devices
+        # Note: The node_list property will automatically reflect any changes to active_nodes
+
     def start_serial(self):
         serial_thread(self)           
     # Disperse incoming response packets to the appropriate node manager object, based on the sender_id
-    def update_node(self,id):
-
-        #gets node device
+    def update_node(self, id):
+        """Update node status and message tracking"""
         node = self.get_node(id)
+        if not node:
+            return
+            
+        current_time = int(t.time())
+        if node.msgsent:
+            node.tlastmsgsent = current_time
+            node.msgsent = False  # Fixed boolean assignment
         
-        #checks node status and updates times
-        if node.msgsent == True:
-            node.tlastmsgsent = int(t.time())
-            node.msgsent == False
-        
-        if node.msgrec == True:
-            node.tlastmsgrec = int(t.time())
-            node.msgrec == False
+        if node.msgrec:
+            node.tlastmsgrec = current_time
+            node.msgrec = False  # Fixed boolean assignment
 
     def time_check(self):
         """
@@ -286,18 +324,21 @@ class NodeNet:
         2. Checks if we haven't sent a heartbeat within TIMEOUT period
         If either condition is met, appropriate action is taken (node removal or heartbeat send)
         """
-        currtime = int(t.time())
+        current_time = int(t.time())
         for node in self.get_all_nodes():
-            if node.heartbeat == True:
-                # Check if we haven't received a message from the node within TIMEOUT period
-                if (currtime-(node.tlastmsgrec + 1)) >= NodeNet.TIMEOUT:
-                    # Node is considered disconnected, remove it from the network
-                    self.remove_node(node.id)
+            if not node.heartbeat:
+                continue
+                
+            # Check if we haven't received a message from the node within TIMEOUT period
+            if node.tlastmsgrec is not None and (current_time - node.tlastmsgrec) >= self.TIMEOUT:
+                D.debug(DEBUG_LEVELS['WARNING'], self.debug_name, f"Node {node.id} timed out - no messages received")
+                self.remove_node(node.id, deactivate=True)
+                continue
 
-                # Check if we haven't sent a heartbeat to the node within TIMEOUT period
-                if (currtime-node.tlastmsgsent) >= NodeNet.TIMEOUT:
-                    # Send a heartbeat pulse to keep the node alive
-                    send_command(node.pulse, self)
+            # Check if we haven't sent a heartbeat to the node within TIMEOUT period
+            if node.tlastmsgsent is not None and (current_time - node.tlastmsgsent) >= self.TIMEOUT:
+                D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Sending heartbeat to node {node.id}")
+                send_command(node.pulse, self)
 
     def send_broadcast_heartbeat(self):
         """Send a broadcast heartbeat to all nodes in the network"""
@@ -307,18 +348,25 @@ class NodeNet:
             heartbeat_cmd = command_t(self.broadcast_node, name="heartbeat", params=[])
             self.command_buff.append(heartbeat_cmd)
             self.last_heartbeat_time = current_time
-            D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, "Broadcast heartbeat sent")
+            D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Broadcast heartbeat sent at {current_time}")
+            
+            # Also update individual node heartbeat tracking
+            for node in self.get_all_nodes():
+                if hasattr(node, 'update_heartbeat'):
+                    node.update_heartbeat(received=False)  # Mark that we sent a heartbeat
 
     def process_node_heartbeat(self, node_id):
         """Process a heartbeat received from a node"""
         node = self.get_node(node_id)
         if node:
             node.update_heartbeat(received=True)
-            D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Heartbeat received from node {node_id}")
+            D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Heartbeat received from node {node_id} at {t.time()}")
+        else:
+            D.debug(DEBUG_LEVELS['WARNING'], self.debug_name, f"Received heartbeat from unknown node {node_id}")
 
     def update_network(self):
         """Update network status including heartbeat management"""
-        # Send broadcast heartbeat if needed
+        # Send broadcast heartbeat if needed - this is the key method that needs to be called regularly
         self.send_broadcast_heartbeat()
         
         # Clean up inactive nodes

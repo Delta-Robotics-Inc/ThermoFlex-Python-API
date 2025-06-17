@@ -42,18 +42,24 @@ def check_serial_permissions():
 
 
 def discover(proid = prod) -> list[NodeNet]: 
-    '''
+    """
+    Discover Thermoflex nodes on available USB ports.
     
-    Takes node-object idnumber and tries to find corresponding port.
-    
-    '''
-
+    Args:
+        proid (list[int]): List of USB product IDs to search for
+        
+    Returns:
+        list[NodeNet]: List of discovered NodeNet instances
+        
+    Raises:
+        ImportError: If no nodes are found
+    """
     check_serial_permissions()  # Gives a warning to the user if they are not in dialout group
     
     ports = {}
+    discovered_nets = []
     
-    z = len(NodeNet.netlist)
-
+    # Scan available ports
     for por in stl.comports(include_links=False):
         # Debug all found ports
         D.debug(DEBUG_LEVELS['DEBUG'], "discover", f"Device: {por.device}")
@@ -62,20 +68,24 @@ def discover(proid = prod) -> list[NodeNet]:
         D.debug(DEBUG_LEVELS['DEBUG'], "discover", f"|  Serial Number: {por.serial_number}")
         D.debug(DEBUG_LEVELS['DEBUG'], "discover", f"|  Description: {por.description}")
 
-        ports[por.pid]= [por.device, por.serial_number]  # Linux requires por.device but windows is ok with por.name
+        ports[por.pid] = [por.device, por.serial_number]  # Linux requires por.device but windows is ok with por.name
         
-    for p in proid:
-        for key in ports.keys():
-            if p == key:
-                nodenetw = NodeNet(z+1, ports[key][0])
-                #nodenetw.openPort()
-                #nodenetw.closePort()
-                z+=1
-    if z == 0:
-        raise ImportError('There are no connected nodes.')
-    else:
-        return NodeNet.netlist
+    # Create networks for matching ports
+    for pid in proid:
+        if pid in ports:
+            try:
+                net = NodeNet(len(NodeNet.netlist) + 1, ports[pid][0])
+                discovered_nets.append(net)
+                D.debug(DEBUG_LEVELS['INFO'], "discover", f"Created network for device at {ports[pid][0]}")
+            except Exception as e:
+                D.debug(DEBUG_LEVELS['ERROR'], "discover", f"Failed to create network for device at {ports[pid][0]}: {e}")
+                continue
     
+    if not discovered_nets:
+        raise ImportError('No Thermoflex nodes found on available USB ports')
+        
+    return discovered_nets
+
 
 # Helper function for single node discovery
 def get_usb_node(bus_id=105, timeout=5.0, poll_interval=0.1):
@@ -95,9 +105,11 @@ def get_usb_node(bus_id=105, timeout=5.0, poll_interval=0.1):
 
     start_time = t.time()
     while t.time() - start_time < timeout:
-        if node_net.node_list:
+        # Check active_nodes instead of node_list
+        active_nodes = list(node_net.active_nodes.values())
+        if active_nodes:
             print(f"Found node on USB bus at port {node_net.port}")
-            return node_net.node_list[0]
+            return active_nodes[0]  # Return first active node
         t.sleep(poll_interval)
 
     raise TimeoutError(f"No nodes discovered on USB bus {bus_id} within {timeout} seconds.")
@@ -156,9 +168,10 @@ def endAll():
     """
 
     # Disable all nodes (allow time for messages to be sent)
-    for node in Node.nodel:
-        node.disableAll()
-        t.sleep(0.1)
+    for net in NodeNet.netlist:
+        for node in net.get_all_nodes():
+            node.disableAll()
+            t.sleep(0.1)
     
     # Signal threads to stop
     stop_threads_flag.set()
@@ -169,19 +182,16 @@ def endAll():
     
     D.debug(DEBUG_LEVELS['INFO'], "endAll", "All threads have been closed")
     
-    # Close all node ports
-    for node in Node.nodel:
+    # Close all node ports and clean up networks
+    for net in NodeNet.netlist:
         try:
-            node.net.closePort()
+            net.close_port()
         except s.SerialException:
             D.debug(DEBUG_LEVELS['WARNING'], "endAll", "Warning: Port not open but attempted to close")
         finally:
-            node.endself()
+            net.end_network()
     
-    # Clean up network and session lists
-    for net in NodeNet.netlist:
-        del net
-
+    # Clean up session lists
     for sess in Session.sessionl:
         sess.end()
         del sess

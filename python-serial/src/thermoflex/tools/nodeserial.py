@@ -57,19 +57,41 @@ def send_command_str(command, network): #TODO: construct packet in commmand, rem
     t.sleep(0.05)
 
 def send_command(command, network):
-    '''
+    """
+    Send a command to a node through the network.
     
-    Sends commands recieved by command_t. Takes command_t object as arguments.
-    
-    '''
-    port = network.arduino
-    D.debug(DEBUG_LEVELS['DEBUG'], "send_command", f'Sent Command{command.packet}')
-    port.write(bytearray(command.packet))
-    t.sleep(0.05)
-    if not (command.destnode_id == [0xFF,0xFF,0xFF] or command.destnode_id == [0x00,0x00,0x01]):
-        msgconfirm = network.getDevice(command.destnode_id)
-        print(type(msgconfirm))
-        msgconfirm.msgsent = True
+    Args:
+        command: Command object to send
+        network: NodeNet instance to send through
+    """
+    try:
+        port = network.arduino
+        D.debug(DEBUG_LEVELS['DEBUG'], "send_command", f'Sent Command{command.packet}')
+        
+        # Generate the packet and send it
+        if hasattr(command, 'packet'):
+            port.write(bytearray(command.packet))
+        elif hasattr(command, 'generate'):
+            port.write(command.generate())
+        else:
+            D.debug(DEBUG_LEVELS['ERROR'], "Serial", f"Command object has no packet or generate method")
+            return False
+        
+        t.sleep(0.05)
+        
+        # Update node status if it's not a broadcast
+        if not (command.destnode_id == [0xFF,0xFF,0xFF] or command.destnode_id == [0x00,0x00,0x01]):
+            node = network.get_node(command.destnode_id)
+            if node:
+                node.msgsent = True
+                if hasattr(node, 'update_heartbeat'):
+                    node.update_heartbeat(received=False)
+        
+        return True
+    except Exception as e:
+        D.debug(DEBUG_LEVELS['ERROR'], "Serial", f"Error sending command: {e}")
+        return False
+
 # States for the receiver state machine
 class ReceptionState(Enum):
     WAIT_FOR_START_BYTE = 1
@@ -158,46 +180,60 @@ class Receiver:
         return None
 
 @threaded
-def serial_thread(network : "NodeNet"):
-
+def serial_thread(network):
+    """
+    Thread for handling serial communication with nodes.
+    
+    Args:
+        network: NodeNet instance to manage
+    """
     receiver = Receiver(network)
     current_time = t.time()
     device_refresh_interval = 5
-
-    while True:
-        try: 
-            cmd_rec = receiver.receive()
-        except s.SerialException:
-            break
-        # Check if port is still open before attempting to read
-
-        # Check if the stop_threads_flag has been set, if so, break the loop and end the thread
-        if stop_threads_flag.is_set():
-            break
-        #print(cmd_rec) #DEBUG
-        if not cmd_rec:
-            pass
-        else:
-            network.disperse(cmd_rec)
-            network.sess.logging(cmd_rec,1)
-
+    
+    while not stop_threads_flag.is_set():
         try:
-            cmd = network.command_buff[0]
-            D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"{GRAY}Sending command to Network {network.idnum}{RESET}")
-            #print(cmd.construct) #DEBUG
-            send_command(cmd,network)
-            network.sess.logging(cmd,0)
-            del network.command_buff[0]
-        except IndexError:
-            #print('No data') #DEBUG
-            pass
+            # Try to receive incoming data
+            try: 
+                cmd_rec = receiver.receive()
+            except s.SerialException:
+                D.debug(DEBUG_LEVELS['ERROR'], "Serial", "Serial exception in receiver")
+                break
+            
+            # Process received command if any
+            if cmd_rec:
+                network.disperse(cmd_rec)
+                if hasattr(network, 'sess') and network.sess:
+                    network.sess.logging(cmd_rec, 1)
+            
+            # Process any pending commands to send
+            if network.command_buff:
+                try:
+                    cmd = network.command_buff[0]
+                    D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"{GRAY}Sending command to Network {network.idnum}{RESET}")
+                    if send_command(cmd, network):
+                        if hasattr(network, 'sess') and network.sess:
+                            network.sess.logging(cmd, 0)
+                        del network.command_buff[0]
+                    else:
+                        # If send failed, wait a bit before retrying
+                        t.sleep(0.1)
+                except IndexError:
+                    pass  # No commands in buffer
+            
+            # Periodic device refresh
+            if t.time() - current_time >= device_refresh_interval:
+                network.refreshDevices()
+                current_time = t.time()
+            
+            # Small sleep to prevent CPU hogging
+            t.sleep(0.01)
+            
+        except Exception as e:
+            D.debug(DEBUG_LEVELS['ERROR'], "Serial", f"Error in serial thread: {e}")
+            t.sleep(0.1)  # Wait a bit before retrying
+    
+    stop_threads_flag.clear()  # Clear the flag to signal that the thread has ended
 
-        if t.time() - current_time >= device_refresh_interval:
-            network.refreshDevices()
-            current_time = t.time()
-
-    stop_threads_flag.clear() # Clear the flag to signal that the thread has ended
-
-        
 # for th in threadlist:
 #         th.join()
