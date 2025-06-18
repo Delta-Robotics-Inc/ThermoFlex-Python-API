@@ -5,12 +5,13 @@ import thermoflex as tf
 import asyncio
 import time as t
 import sys
+from thermoflex.tools.nodeserial import stop_threads_flag
 
 COMMAND_CHANGE_INTERVAL = 5
 STATUS_THREAD_INTERVAL = 10
 END_TEST_FLAG = False
 
-tf.set_debug_level('DEVICE')
+tf.set_debug_level('DEBUG')
 
 #Establish a connection to the testnet and testnode
 testnode = tf.get_usb_node()
@@ -109,7 +110,16 @@ async def main():
         status_task.cancel()
     
     print("Ending all connections...")
-    tf.endAll()
+    
+    # Use the improved endAll() function with proper timeout handling
+    success = tf.endAll(timeout=10.0, force_timeout=2.0, exit_program=False)
+    
+    if success:
+        print("All threads and connections closed successfully")
+    else:
+        print("Warning: Some threads may not have closed cleanly")
+    
+    print("Cleanup completed - program should exit cleanly now")
 
 if __name__ == "__main__":
     # Run the async main function

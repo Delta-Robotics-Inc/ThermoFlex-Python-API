@@ -1,4 +1,5 @@
-from .tools.nodeserial import serial_thread, send_command, stop_threads_flag, threaded
+from .tools.nodeserial import serial_thread, send_command, stop_threads_flag, start_serial_thread
+from .tools.thread_manager import thread_manager
 from .tools.packet import command_t, deconst_serial_response
 from .devices import Node, Muscle
 from .sessions import Session
@@ -11,49 +12,118 @@ import threading as thr
 NET_MANAGER_FLAG = thr.Event()
 
 class NetManager:
+    """
+    Improved Network Manager with proper thread lifecycle management
+    """
     
     manage_list = []
-    def __init__(self, net = None):
-        NetManager.manage_list.append(net)
-        NET_MANAGER_FLAG.clear()
-        NetManager.net_manager_thread()
+    _manager_thread = None
+    _shutdown_requested = False
     
-    def add_net(net):
+    def __init__(self, net=None):
         NetManager.manage_list.append(net)
+        if NetManager._manager_thread is None:
+            NetManager.start_manager()
+    
+    @classmethod
+    def add_net(cls, net):
+        cls.manage_list.append(net)
+        if cls._manager_thread is None:
+            cls.start_manager()
 
-    def remove_net(net):
-        NetManager.manage_list.remove(net)
+    @classmethod
+    def remove_net(cls, net):
+        if net in cls.manage_list:
+            cls.manage_list.remove(net)
 
-    def stop_manager():
-        NET_MANAGER_FLAG.set()
+    @classmethod
+    def start_manager(cls):
+        """Start the network manager thread"""
+        if cls._manager_thread is not None and cls._manager_thread.is_alive():
+            D.debug(DEBUG_LEVELS['WARNING'], "NetManager", "Manager thread already running")
+            return
+        
+        cls._shutdown_requested = False
+        cls._manager_thread = thread_manager.create_thread(
+            target=cls.net_manager_thread,
+            name="net_manager_thread",
+            shutdown_timeout=5.0
+        )
+        D.debug(DEBUG_LEVELS['INFO'], "NetManager", "Network manager thread started")
 
-    @threaded
-    def net_manager_thread():
-        """Thread that manages all networks and ensures heartbeats are sent"""
+    @classmethod
+    def stop_manager(cls, timeout=5.0):
+        """Stop the network manager thread gracefully"""
+        if cls._manager_thread is None:
+            return True
+        
+        D.debug(DEBUG_LEVELS['INFO'], "NetManager", "Stopping network manager...")
+        cls._shutdown_requested = True
+        
+        # Get the managed thread object and stop it
+        managed_thread = thread_manager.get_thread("net_manager_thread")
+        if managed_thread:
+            success = managed_thread.stop(timeout=timeout)
+            if success:
+                D.debug(DEBUG_LEVELS['INFO'], "NetManager", "Network manager stopped successfully")
+            else:
+                D.debug(DEBUG_LEVELS['WARNING'], "NetManager", "Network manager did not stop gracefully")
+            cls._manager_thread = None
+            return success
+        
+        return True
+
+    @staticmethod
+    def net_manager_thread(stop_event=None):
+        """
+        Thread that manages all networks and ensures heartbeats are sent
+        
+        Args:
+            stop_event: Threading event to signal thread shutdown (injected by ThreadManager)
+        """
         D.debug(DEBUG_LEVELS['INFO'], "NetManager", "Network manager thread started")
         
-        while not NET_MANAGER_FLAG.is_set():
-            try:
-                checklist = NodeNet.netlist.copy()
-                for net in checklist:                
-                    try:
-                        net.update_network()
-                        D.debug(DEBUG_LEVELS['DEBUG'], "NetManager", f"Updated network {net.idnum}")
-                    except Exception as e:
-                        D.debug(DEBUG_LEVELS['ERROR'], "NetManager", f"Error updating network {net.idnum}: {e}")
-                        
-                if stop_threads_flag.is_set():
-                    NET_MANAGER_FLAG.set()
-                    break
-                    
-                # Sleep for a shorter interval to ensure more frequent heartbeat checks
-                t.sleep(0.5)  # Check every 500ms instead of blocking
-                
-            except Exception as e:
-                D.debug(DEBUG_LEVELS['ERROR'], "NetManager", f"Error in network manager thread: {e}")
-                t.sleep(1.0)
+        # Use provided stop_event or fall back to class shutdown flag
+        def should_stop():
+            return (stop_event and stop_event.is_set()) or NetManager._shutdown_requested or stop_threads_flag.is_set()
         
-        D.debug(DEBUG_LEVELS['INFO'], "NetManager", "Network manager thread ended")
+        try:
+            while not should_stop():
+                try:
+                    # Get a snapshot of networks to avoid modification during iteration
+                    checklist = NodeNet.netlist.copy()
+                    
+                    for net in checklist:                
+                        try:
+                            # Skip if network is marked for shutdown
+                            if hasattr(net, '_shutdown_requested') and net._shutdown_requested:
+                                continue
+                                
+                            net.update_network()
+                            D.debug(DEBUG_LEVELS['DEBUG'], "NetManager", f"Updated network {net.idnum}")
+                        except Exception as e:
+                            D.debug(DEBUG_LEVELS['ERROR'], "NetManager", f"Error updating network {net.idnum}: {e}")
+                    
+                    # Check for shutdown conditions
+                    if should_stop():
+                        break
+                        
+                    # Sleep for a shorter interval to ensure more frequent heartbeat checks
+                    # Use a small sleep and check for shutdown more frequently
+                    for _ in range(5):  # 5 * 0.1 = 0.5 seconds total
+                        if should_stop():
+                            break
+                        t.sleep(0.1)
+                        
+                except Exception as e:
+                    D.debug(DEBUG_LEVELS['ERROR'], "NetManager", f"Error in network manager thread: {e}")
+                    if should_stop():
+                        break
+                    t.sleep(1.0)
+        
+        finally:
+            D.debug(DEBUG_LEVELS['INFO'], "NetManager", "Network manager thread ended")
+            NetManager._manager_thread = None
 
 def sess(net):#create session if one does not exist
     if Session.sescount>0:
@@ -72,7 +142,8 @@ class NodeNet:
     Network Manager class for Thermoflex devices.
     
     The NodeNet class is responsible for managing the network of Thermoflex nodes connected via USB serial.
-    It handles all network-level operations including:
+    These devices networked together are all accessible from the same serial port over a USB connection to a single Node Controller.
+    NodeNet handles all network-level operations including:
     - Node lifecycle management (creation, activation, deactivation)
     - Network communication and packet distribution
     - Heartbeat system management
@@ -119,6 +190,8 @@ class NodeNet:
         self.port = port
         self.arduino = None
         self.debug_name = f"NodeNet {self.idnum}"  # Initialize debug_name first
+        self._serial_thread = None  # Track the serial thread
+        self._shutdown_requested = False  # Track shutdown state
         
         # Network management
         self.active_nodes: dict[tuple, 'Node'] = {}  # Dict of active nodes, keyed by node ID tuple
@@ -267,6 +340,17 @@ class NodeNet:
 
     def end_network(self):
         """Clean up all network resources"""
+        D.debug(DEBUG_LEVELS['INFO'], self.debug_name, "Starting network cleanup...")
+        self._shutdown_requested = True
+        
+        # Stop the serial thread first
+        if self._serial_thread:
+            D.debug(DEBUG_LEVELS['INFO'], self.debug_name, "Stopping serial thread...")
+            success = self._serial_thread.stop(timeout=3.0)
+            if not success:
+                D.debug(DEBUG_LEVELS['WARNING'], self.debug_name, "Serial thread did not stop gracefully")
+            self._serial_thread = None
+        
         # Disable all nodes
         for node in self.get_all_nodes():
             node.disableAll()
@@ -282,13 +366,16 @@ class NodeNet:
         
         # Close network port
         try:
-            self.close_port()  # Changed from closePort to close_port
+            self.close_port()
         except s.SerialException:
             D.debug(DEBUG_LEVELS['WARNING'], self.debug_name, "Warning: Port not open but attempted to close")
         
-        # Remove from network list
+        # Remove from network list and manager
         if self in NodeNet.netlist:
             NodeNet.netlist.remove(self)
+        NetManager.remove_net(self)
+        
+        D.debug(DEBUG_LEVELS['INFO'], self.debug_name, "Network cleanup completed")
 
     def refreshDevices(self):
         '''
@@ -299,7 +386,19 @@ class NodeNet:
         # Note: The node_list property will automatically reflect any changes to active_nodes
 
     def start_serial(self):
-        serial_thread(self)           
+        """Start the serial thread for this network"""
+        if self._serial_thread and self._serial_thread.is_alive():
+            D.debug(DEBUG_LEVELS['WARNING'], self.debug_name, "Serial thread already running")
+            return
+        
+        self._serial_thread = thread_manager.create_thread(
+            target=serial_thread,
+            args=(self,),
+            name=f"serial_thread_net_{self.idnum}",
+            shutdown_timeout=3.0
+        )
+        D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Started serial thread: {self._serial_thread.name}")
+
     # Disperse incoming response packets to the appropriate node manager object, based on the sender_id
     def update_node(self, id):
         """Update node status and message tracking"""
@@ -366,6 +465,10 @@ class NodeNet:
 
     def update_network(self):
         """Update network status including heartbeat management"""
+        # Skip updates if shutdown was requested
+        if self._shutdown_requested:
+            return
+            
         # Send broadcast heartbeat if needed - this is the key method that needs to be called regularly
         self.send_broadcast_heartbeat()
         

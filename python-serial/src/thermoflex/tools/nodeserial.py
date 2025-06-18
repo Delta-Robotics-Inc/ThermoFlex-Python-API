@@ -7,6 +7,7 @@ from .packet import parse_packet, command_t, STARTBYTE
 from .debug import Debugger as D, DEBUG_LEVELS
 import threading as thr
 from enum import Enum
+from .thread_manager import thread_manager, stop_threads_flag
 
 from typing import TYPE_CHECKING
 
@@ -17,18 +18,25 @@ if TYPE_CHECKING:
 GRAY = "\033[90m"  # Bright black/gray color
 RESET = "\033[0m"  # Reset color
 
-stop_threads_flag = thr.Event() # Flag to stop all threads when the thread is ready to close
+# Legacy threadlist for backward compatibility - now properly maintained
+threadlist = []
 
 def threaded(func):
-    global threadlist
-    threadlist = []
+    """
+    DEPRECATED: Legacy threaded decorator
     
+    Use thread_manager.create_thread() for new code.
+    This decorator is maintained for backward compatibility.
+    """
     def wrapper(*args, **kwargs):
-        thread = thr.Thread(target=func, args=args, kwargs = kwargs)
-        thread.start()
-        #print(thread.getName(),func) # prints thread name and function type
-        threadlist.append(thread)
-        return thread
+        name = f"{func.__name__}_{len(threadlist)}"
+        managed_thread = thread_manager.create_thread(
+            target=func, args=args, kwargs=kwargs, 
+            name=name, start=True
+        )
+        # Add to legacy threadlist for compatibility
+        threadlist.append(managed_thread.thread)
+        return managed_thread.thread
 
     return wrapper
 
@@ -180,60 +188,96 @@ class Receiver:
         return None
 
 @threaded
-def serial_thread(network):
+def serial_thread(network, stop_event=None):
     """
     Thread for handling serial communication with nodes.
     
     Args:
         network: NodeNet instance to manage
+        stop_event: Threading event to signal thread shutdown (injected by ThreadManager)
     """
+    # Use provided stop_event or fall back to global flag for backward compatibility
+    stop_flag = stop_event or stop_threads_flag
+    
     receiver = Receiver(network)
     current_time = t.time()
     device_refresh_interval = 5
     
-    while not stop_threads_flag.is_set():
-        try:
-            # Try to receive incoming data
-            try: 
-                cmd_rec = receiver.receive()
-            except s.SerialException:
-                D.debug(DEBUG_LEVELS['ERROR'], "Serial", "Serial exception in receiver")
-                break
-            
-            # Process received command if any
-            if cmd_rec:
-                network.disperse(cmd_rec)
-                if hasattr(network, 'sess') and network.sess:
-                    network.sess.logging(cmd_rec, 1)
-            
-            # Process any pending commands to send
-            if network.command_buff:
-                try:
-                    cmd = network.command_buff[0]
-                    D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", f"{GRAY}Sending command to Network {network.idnum}{RESET}")
-                    if send_command(cmd, network):
-                        if hasattr(network, 'sess') and network.sess:
-                            network.sess.logging(cmd, 0)
-                        del network.command_buff[0]
-                    else:
-                        # If send failed, wait a bit before retrying
-                        t.sleep(0.1)
-                except IndexError:
-                    pass  # No commands in buffer
-            
-            # Periodic device refresh
-            if t.time() - current_time >= device_refresh_interval:
-                network.refreshDevices()
-                current_time = t.time()
-            
-            # Small sleep to prevent CPU hogging
-            t.sleep(0.01)
-            
-        except Exception as e:
-            D.debug(DEBUG_LEVELS['ERROR'], "Serial", f"Error in serial thread: {e}")
-            t.sleep(0.1)  # Wait a bit before retrying
+    D.debug(DEBUG_LEVELS['INFO'], "SerialThread", 
+           f"Serial thread started for network {network.idnum}")
     
-    stop_threads_flag.clear()  # Clear the flag to signal that the thread has ended
+    try:
+        while not stop_flag.is_set():
+            try:
+                # Try to receive incoming data
+                try: 
+                    cmd_rec = receiver.receive()
+                except s.SerialException as e:
+                    D.debug(DEBUG_LEVELS['ERROR'], "Serial", f"Serial exception in receiver: {e}")
+                    break
+                except Exception as e:
+                    D.debug(DEBUG_LEVELS['ERROR'], "Serial", f"Unexpected error in receiver: {e}")
+                    t.sleep(0.1)  # Brief pause before retrying
+                    continue
+                
+                # Process received command if any
+                if cmd_rec:
+                    network.disperse(cmd_rec)
+                    if hasattr(network, 'sess') and network.sess:
+                        network.sess.logging(cmd_rec, 1)
+                
+                # Process any pending commands to send
+                if network.command_buff:
+                    try:
+                        cmd = network.command_buff[0]
+                        D.debug(DEBUG_LEVELS['DEBUG'], "SerialThread", 
+                               f"{GRAY}Sending command to Network {network.idnum}{RESET}")
+                        if send_command(cmd, network):
+                            if hasattr(network, 'sess') and network.sess:
+                                network.sess.logging(cmd, 0)
+                            del network.command_buff[0]
+                        else:
+                            # If send failed, wait a bit before retrying
+                            t.sleep(0.1)
+                    except IndexError:
+                        pass  # No commands in buffer
+                    except Exception as e:
+                        D.debug(DEBUG_LEVELS['ERROR'], "Serial", f"Error processing command buffer: {e}")
+                
+                # Periodic device refresh
+                if t.time() - current_time >= device_refresh_interval:
+                    if not stop_flag.is_set():  # Only refresh if not shutting down
+                        network.refreshDevices()
+                    current_time = t.time()
+                
+                # Small sleep to prevent CPU hogging
+                t.sleep(0.01)
+                
+            except Exception as e:
+                D.debug(DEBUG_LEVELS['ERROR'], "Serial", f"Error in serial thread main loop: {e}")
+                t.sleep(0.1)  # Wait a bit before retrying
+    
+    finally:
+        D.debug(DEBUG_LEVELS['INFO'], "SerialThread", 
+               f"Serial thread for network {network.idnum} shutting down")
+        
+        # Ensure any remaining commands are processed or cleared
+        if hasattr(network, 'command_buff'):
+            remaining_commands = len(network.command_buff)
+            if remaining_commands > 0:
+                D.debug(DEBUG_LEVELS['WARNING'], "SerialThread", 
+                       f"Discarding {remaining_commands} pending commands during shutdown")
+                network.command_buff.clear()
+
+# Legacy functions for compatibility
+def start_serial_thread(network):
+    """Start a serial thread for the given network (legacy compatibility)"""
+    return thread_manager.create_thread(
+        target=serial_thread, 
+        args=(network,), 
+        name=f"serial_thread_net_{network.idnum}",
+        shutdown_timeout=3.0
+    )
 
 # for th in threadlist:
 #         th.join()
