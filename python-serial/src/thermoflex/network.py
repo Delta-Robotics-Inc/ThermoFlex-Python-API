@@ -379,10 +379,12 @@ class NodeNet:
 
     def refreshDevices(self):
         '''
-        Refreshes the network devices by sending a broadcast status command to the network.
+        Refreshes the network devices by sending a broadcast status command to all devices.
+        Uses DEVICE_ALL to get status from both node and muscle controllers.
         All devices on the network will respond with their status.
         '''
-        self.broadcast_node.status('compact')  # broadcasts status to all devices
+        # Request status from all devices (node + muscles) on all nodes
+        self.broadcast_node.status('compact', device='all')  # This will get node AND muscle status
         # Note: The node_list property will automatically reflect any changes to active_nodes
 
     def start_serial(self):

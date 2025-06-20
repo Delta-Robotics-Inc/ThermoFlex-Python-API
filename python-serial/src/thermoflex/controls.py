@@ -102,7 +102,8 @@ def get_usb_node(bus_id=105, timeout=5.0, poll_interval=0.1):
         Node object if found, else raises TimeoutError.
     """
     node_net = discover([bus_id])[0]
-    node_net.refreshDevices()
+    # Note: refreshDevices() is automatically called in NodeNet.__init__()
+    # so we don't need to call it again here
 
     start_time = t.time()
     while t.time() - start_time < timeout:

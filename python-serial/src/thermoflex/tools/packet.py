@@ -104,88 +104,114 @@ def parse_packet(data, packet_length):
         return None
 
 def deconst_serial_response(data):
+    """
+    Parse protobuf NodeResponse data and return protocol-compliant field names.
+    
+    This function now maintains 1:1 mapping with protobuf field names to ensure
+    protocol compliance and eliminate non-standard field name mapping.
+    """
     response_type = ''
     response_dict = {}
     data = tfproto.NodeResponse.FromString(data)
-    #print(data)       #DEBUG
     read_data = "none"
     
     if data.HasField('general_response'):
         read_data = 'general'
-        #print('general')    #DEBUG
-        response_dict['dev'] = data.general_response.device
-        response_dict['rec_cmd'] = data.general_response.received_cmd
-        response_dict['code'] = data.general_response.response_code
-        #print(read_data)   #DEBUG     
+        # Use protocol-compliant field names for general response
+        response_dict['device'] = data.general_response.device
+        response_dict['received_cmd'] = data.general_response.received_cmd
+        response_dict['response_code'] = data.general_response.response_code
+            
     elif data.HasField('status_response'):
         read_data = 'status'
-        #print('status')   #DEBUG  
         data = data.status_response
         
-        response_dict['Status_dev'] = data.device
+        # Device field - protocol compliant
+        response_dict['device'] = data.device
 
         if data.HasField('node_status_compact'): 
             read_data += ' node compact'
-            #response_dict['CompactStatus'] = data.node_status_compact
-            response_dict['uptime'] = data.node_status_compact.uptime
-            response_dict['errors'] = data.node_status_compact.error_code 
-            response_dict['volt_supply'] = data.node_status_compact.v_supply
-            response_dict['pot_values'] = data.node_status_compact.pot_val
+            # Map directly to protobuf field names - protocol compliant
+            compact = data.node_status_compact
+            response_dict['uptime'] = compact.uptime
+            response_dict['error_code'] = compact.error_code 
+            response_dict['v_supply'] = compact.v_supply
+            response_dict['pot_val'] = compact.pot_val
         
         elif data.HasField('node_status_dump'): 
             read_data += ' node dump'
-            #response_dict['compact'] = data.node_status_dump
-            response_dict['uptime'] = data.node_status_dump.compact_status.uptime
-            response_dict['errors'] = data.node_status_dump.compact_status.error_code
-            response_dict['volt_supply'] = data.node_status_dump.compact_status.v_supply
-            response_dict['pot_values'] = data.node_status_dump.compact_status.pot_val 
-            response_dict['can_id'] = f'{data.node_status_dump.loaded_settings.can_id}'
-            response_dict['firmware'] = f'{data.node_status_dump.firmware_version}.{data.node_status_dump.firmware_subversion}'
-            response_dict['board_ver'] = f'{data.node_status_dump.board_version}.{data.node_status_dump.board_subversion}'
-            response_dict['muscle_count'] = data.node_status_dump.muscle_cnt
-            response_dict['log_interval'] = data.node_status_dump.log_interval_ms
-            response_dict['vrd_scalar'] = data.node_status_dump.vrd_scalar
-            response_dict['vrd_offset'] = data.node_status_dump.vrd_offset
-            response_dict['max_current'] = data.node_status_dump.max_current
-            response_dict['min_v_supply'] = data.node_status_dump.min_v_supply
-             
+            # Map directly to protobuf field names - protocol compliant
+            dump = data.node_status_dump
+            
+            # Compact status within dump
+            compact = dump.compact_status
+            response_dict['uptime'] = compact.uptime
+            response_dict['error_code'] = compact.error_code
+            response_dict['v_supply'] = compact.v_supply
+            response_dict['pot_val'] = compact.pot_val
+            
+            # Node settings
+            settings = dump.loaded_settings
+            response_dict['can_id'] = settings.can_id
+            
+            # Dump-specific fields
+            response_dict['firmware_version'] = dump.firmware_version
+            response_dict['firmware_subversion'] = dump.firmware_subversion
+            response_dict['board_version'] = dump.board_version
+            response_dict['board_subversion'] = dump.board_subversion
+            response_dict['muscle_cnt'] = dump.muscle_cnt
+            response_dict['log_interval_ms'] = dump.log_interval_ms
+            response_dict['vrd_scalar'] = dump.vrd_scalar
+            response_dict['vrd_offset'] = dump.vrd_offset
+            response_dict['max_current'] = dump.max_current
+            response_dict['min_v_supply'] = dump.min_v_supply
 
         elif data.HasField('sma_status_compact'): 
             read_data += f' SMA compact {data.sma_status_compact.device_port}'
-            #response_dict['Compact'] = data.sma_status_compact
-            response_dict['dev'] = data.sma_status_compact.device_port
-            response_dict['enable_status'] = data.sma_status_compact.enabled
-            response_dict['control_mode'] = data.sma_status_compact.mode
-            response_dict['pwm_out'] = data.sma_status_compact.output_pwm
-            response_dict['load_amps'] = data.sma_status_compact.load_amps
-            response_dict['load_voltdrop'] = data.sma_status_compact.load_vdrop
-            response_dict['load_ohms'] = data.sma_status_compact.load_mohms 
+            # Use EXACT protobuf field names - protocol compliant
+            compact = data.sma_status_compact
+            response_dict['device_port'] = compact.device_port
+            response_dict['enabled'] = compact.enabled
+            response_dict['mode'] = compact.mode
+            response_dict['setpoint'] = compact.setpoint
+            response_dict['output_pwm'] = compact.output_pwm
+            response_dict['load_amps'] = compact.load_amps
+            response_dict['load_vdrop'] = compact.load_vdrop
+            response_dict['load_mohms'] = compact.load_mohms
         
         elif data.HasField('sma_status_dump'): 
-            read_data += f' SMA dump {data.sma_status_compact.device_port}'
-            #response_dict['Dump'] = data.sma_status_dump 
-            response_dict['dev'] = data.sma_status_dump.compact_status.device_port
-            response_dict['enable_status'] = data.sma_status_dump.compact_status.enabled
-            response_dict['control_mode'] = data.sma_status_dump.compact_status.mode
-            response_dict['pwm_out'] = data.sma_status_dump.compact_status.output_pwm
-            response_dict['load_amps'] = data.sma_status_dump.compact_status.load_amps
-            response_dict['load_voltdrop'] = data.sma_status_dump.compact_status.load_vdrop
-            response_dict['load_ohms'] = data.sma_status_dump.compact_status.load_mohms 
-            response_dict['SMA_default_mode'] = data.sma_status_dump.loaded_settings.default_mode
-            response_dict['SMA_default_setpoint'] = data.sma_status_dump.loaded_settings.default_setpoint
-            response_dict['SMA_rcontrol_kp'] = data.sma_status_dump.loaded_settings.rcntrl_kp
-            response_dict['SMA_rcontrol_ki'] = data.sma_status_dump.loaded_settings.rcntrl_ki
-            response_dict['SMA_rcontrol_kd'] = data.sma_status_dump.loaded_settings.rcntrl_kd
-            response_dict['vld_scalar'] = data.sma_status_dump.vld_scalar
-            response_dict['vld_offset'] = data.sma_status_dump.vld_offset
-            response_dict['r_sns_ohms'] = data.sma_status_dump.r_sns_ohms
-            response_dict['amp_gain'] = data.sma_status_dump.amp_gain
-            response_dict['af_mohms'] = data.sma_status_dump.af_mohms
-            response_dict['delta_mohms'] = data.sma_status_dump.delta_mohms
-            response_dict['trainstate'] = data.sma_status_dump.trainState
+            read_data += f' SMA dump {data.sma_status_dump.compact_status.device_port}'
+            # Use EXACT protobuf field names - protocol compliant
+            dump = data.sma_status_dump
+            
+            # Compact status within dump
+            compact = dump.compact_status
+            response_dict['device_port'] = compact.device_port
+            response_dict['enabled'] = compact.enabled
+            response_dict['mode'] = compact.mode
+            response_dict['setpoint'] = compact.setpoint
+            response_dict['output_pwm'] = compact.output_pwm
+            response_dict['load_amps'] = compact.load_amps
+            response_dict['load_vdrop'] = compact.load_vdrop
+            response_dict['load_mohms'] = compact.load_mohms
+            
+            # Controller settings - protocol compliant
+            settings = dump.loaded_settings
+            response_dict['default_mode'] = settings.default_mode
+            response_dict['default_setpoint'] = settings.default_setpoint
+            response_dict['rctrl_kp'] = settings.rctrl_kp
+            response_dict['rctrl_ki'] = settings.rctrl_ki
+            response_dict['rctrl_kd'] = settings.rctrl_kd
+            
+            # Additional dump fields - protocol compliant
+            response_dict['vld_scalar'] = dump.vld_scalar
+            response_dict['vld_offset'] = dump.vld_offset
+            response_dict['r_sns_ohms'] = dump.r_sns_ohms
+            response_dict['amp_gain'] = dump.amp_gain
+            response_dict['af_mohms'] = dump.af_mohms
+            response_dict['delta_mohms'] = dump.delta_mohms
+            response_dict['trainState'] = dump.trainState
 
-    else:
-        pass
     D.debug(DEBUG_LEVELS['DEBUG'], "deconst_response_packet", f"Response Type: {read_data}")
     D.debug(DEBUG_LEVELS['DEBUG'], "deconst_response_packet", f"Response Packet Data: {response_dict}")
     return (read_data, response_dict)

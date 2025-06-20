@@ -220,20 +220,30 @@ class Node:
             #self.logmode = 0
             print("Test complete")
 
-    def status(self, type):
-        """Request and collect status from the device"""
-        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Requesting {type} status")
+    def status(self, type, device='all'):
+        """Request and collect status from the device
+        
+        Args:
+            type (str): Status type - 'compact' or 'dump'
+            device (str): Device target - 'all' (default), 'node', 'portall', 'm1', 'm2'
+                         'all' = DEVICE_ALL (node + all muscles)
+                         'node' = DEVICE_NODE (node only)
+                         'portall' = DEVICE_PORTALL (all muscles only)
+                         'm1' = DEVICE_PORT1 (muscle 1 only)
+                         'm2' = DEVICE_PORT2 (muscle 2 only)
+        """
+        D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Requesting {type} status from device '{device}'")
         
         if type == 'dump':
-            status = command_t(self, name = 'status', params = [2])
+            status = command_t(self, name = 'status', params = [2], device = device)
             self.net.command_buff.append(status)
-            D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Added dump status request to command buffer")
+            D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Added dump status request for device '{device}' to command buffer")
             t.sleep(0.5)
             return self.status_curr
         elif type == 'compact':
-            status = command_t(self, name = 'status', params = [1])
+            status = command_t(self, name = 'status', params = [1], device = device)
             self.net.command_buff.append(status)
-            D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Added compact status request to command buffer")
+            D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Added compact status request for device '{device}' to command buffer")
             t.sleep(0.5)
             return self.status_curr
         else:
@@ -256,39 +266,98 @@ class Node:
             D.debug(DEBUG_LEVELS['DEBUG'], "Node", f"Node {self.id}: Processing node status update")
             for key in self.node_status.keys():
                 try:
-                    if key == 'errors':
-                        self.node_status[key].insert(0,resp_data[key])
+                    # Handle protocol-compliant field names
+                    if key == 'errors' and 'error_code' in resp_data:
+                        # Protocol uses 'error_code', we store as 'errors' list
+                        self.node_status[key].insert(0, resp_data['error_code'])
                         enforce_size_limit(self.node_status[key])
-                    else:
-                        self.node_status[key] = resp_data[key]
+                    elif key == 'volt_supply' and 'v_supply' in resp_data:
+                        # Protocol uses 'v_supply', we store as 'volt_supply'
+                        self.node_status[key] = resp_data['v_supply']
+                    elif key == 'pot_values' and 'pot_val' in resp_data:
+                        # Protocol uses 'pot_val', we store as 'pot_values'
+                        self.node_status[key] = resp_data['pot_val']
+                    elif key == 'log_interval' and 'log_interval_ms' in resp_data:
+                        # Protocol uses 'log_interval_ms', we store as 'log_interval'
+                        self.node_status[key] = resp_data['log_interval_ms']
+                    elif key in resp_data:  # Direct field match
+                        if type(self.node_status[key]) == list:
+                            self.node_status[key].insert(0, resp_data[key])
+                            enforce_size_limit(self.node_status[key])
+                        else:
+                            self.node_status[key] = resp_data[key]
                 except KeyError:
                     continue
+                    
+            # Handle dump-specific fields with protocol-compliant names
             if resp_type[2] == 'dump':
-                self.canid, self.firmware, self.board_version = resp_data['can_id'], resp_data['firmware'], resp_data['board_ver'] 
-                if resp_data['muscle_count'] != len(self.muscles):
-                    D.debug(DEBUG_LEVELS['WARNING'], 'StatusCheck', 'Number of muscles intialized does not match the number of muscles attached to Node.')
+                if 'can_id' in resp_data:
+                    self.canid = resp_data['can_id']
+                if 'firmware_version' in resp_data and 'firmware_subversion' in resp_data:
+                    self.firmware = f"{resp_data['firmware_version']}.{resp_data['firmware_subversion']}"
+                if 'board_version' in resp_data and 'board_subversion' in resp_data:
+                    self.board_version = f"{resp_data['board_version']}.{resp_data['board_subversion']}"
+                if 'muscle_cnt' in resp_data:
+                    if resp_data['muscle_cnt'] != len(self.muscles):
+                        D.debug(DEBUG_LEVELS['WARNING'], 'StatusCheck', 'Number of muscles initialized does not match the number of muscles attached to Node.')
         
         elif resp_type[1] == 'SMA':
             D.debug(DEBUG_LEVELS['DEBUG'], 'updateStatus', f'Dispersing Muscle{resp_type[3]} status')
+            
+            # Convert protobuf device enum to internal portNum
+            # DEVICE_PORT1 = 3 -> portNum = 0 (muscle0)
+            # DEVICE_PORT2 = 4 -> portNum = 1 (muscle1)
+            protobuf_device_port = int(resp_type[3])  
+            
+            if protobuf_device_port == 3:  # DEVICE_PORT1
+                internal_port_num = 0
+            elif protobuf_device_port == 4:  # DEVICE_PORT2  
+                internal_port_num = 1
+            else:
+                D.debug(DEBUG_LEVELS['ERROR'], 'updateStatus', f'Unknown protobuf device port: {protobuf_device_port}')
+                return
+                
+            muscle_found = False
+            
             for musc in self.muscles.values():
-                if musc.mosfetnum == resp_type[3]:
+                # Match by internal portNum
+                if hasattr(musc, 'portNum') and musc.portNum == internal_port_num:
+                    muscle_found = True
+                    
+                    # Update muscle status with protocol-compliant field names
+                    # The packet parser now sends correct protobuf field names
+                    D.debug(DEBUG_LEVELS['DEBUG'], 'updateStatus', f'Found muscle for protobuf port {protobuf_device_port} -> internal portNum {internal_port_num}')
+                    
+                    # Direct field mapping - protocol compliant
                     for key in musc.SMA_status.keys():
                         try:
-                            resp_data[key]
-                            if type(musc.SMA_status[key]) == list:
-                                musc.SMA_status[key].insert(0,resp_data[key])
-                                enforce_size_limit(musc.SMA_status[key])
-                            else:
-                                musc.SMA_status[key] = resp_data[key]
+                            if key in resp_data:  # Direct field match
+                                if type(musc.SMA_status[key]) == list:
+                                    musc.SMA_status[key].insert(0, resp_data[key])
+                                    enforce_size_limit(musc.SMA_status[key])
+                                else:
+                                    musc.SMA_status[key] = resp_data[key]
                         except KeyError:
                             continue
+                    
+                    # Update muscle metadata from response
+                    if 'enabled' in resp_data:
+                        musc.enable_status = resp_data['enabled']
+                    if 'device_port' in resp_data:
+                        # Store the protobuf device port for reference
+                        if not hasattr(musc, 'device_port'):
+                            musc.device_port = resp_data['device_port']
+                    if 'trainState' in resp_data:
+                        musc.train_state = resp_data['trainState']
                         
-                    musc.enable_status = resp_data['enable_status']
-                    musc.cmode = command_t.modedef[resp_data['dev']]
-                    musc.train_state = resp_data['trainstate']
+                    D.debug(DEBUG_LEVELS['DEBUG'], 'updateStatus', f'Updated muscle {musc.portNum} with protocol-compliant data')
                     break
-                else:
-                    D.debug(DEBUG_LEVELS['ERROR'], 'updateStatus(muscle)', 'Unknown muscle mosport received.')
+                    
+            if not muscle_found:
+                D.debug(DEBUG_LEVELS['ERROR'], 'updateStatus(muscle)', f'No muscle found for protobuf device port {protobuf_device_port} (internal port {internal_port_num})')
+                # Debug: Print available muscles
+                for key, musc in self.muscles.items():
+                    D.debug(DEBUG_LEVELS['ERROR'], 'updateStatus', f'Available muscle {key}: portNum={musc.portNum}, mosfetnum={musc.mosfetnum}')
         else:
             D.debug(DEBUG_LEVELS['ERROR'], 'updateStatus', f'Incompatible status type: {resp_type}')
             
@@ -352,7 +421,7 @@ class Node:
                     D.debug(DEBUG_LEVELS['DEBUG'], "muscle", f"Node {self.id} added command to network buffer {self.net.idnum}")
       
     def setSetpoint(self, setpoint:float, conmode, device):   #takes muscle port and 
-        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Setting setpoint for {device} to {setpoint}")
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Setting setpoint for device {device} to {setpoint} (mode: {conmode})")
         #TODO: call muscle port number
         if type(device) == int:
             muscl = f"m{self.muscles[str(device)].portNum+1}"     
@@ -455,7 +524,30 @@ class Node:
             self.net.remove_node(self.id, deactivate=False)
         del self
 
+    def getMuscleStatus(self, type='compact'):
+        """Request status from all muscle ports only (DEVICE_PORTALL)
+        
+        Args:
+            type (str): Status type - 'compact' or 'dump'
+        """
+        return self.status(type, device='portall')
     
+    def getNodeOnlyStatus(self, type='compact'):
+        """Request status from node only (DEVICE_NODE)
+        
+        Args:
+            type (str): Status type - 'compact' or 'dump'  
+        """
+        return self.status(type, device='node')
+    
+    def getAllDeviceStatus(self, type='compact'):
+        """Request status from all devices - node and muscles (DEVICE_ALL)
+        
+        Args:
+            type (str): Status type - 'compact' or 'dump'
+        """
+        return self.status(type, device='all')
+
 #---------------------------------------------------------------------------------------  
 
 class Muscle:
@@ -466,7 +558,35 @@ class Muscle:
         self.masternode = masternode
         self.enable_status = None
         self.train_state = None
-        self.SMA_status = {'pwm_out':[],'load_amps':[],'load_voltdrop':[],'SMA_default_mode':None,'SMA_deafult_setpoint':None,'SMA_rcontrol_kp':None,'SMA_rcontrol_ki':None,'SMA_rcontrol_kd':None, 'vld_scalar':None,'vld_offset':None,'r_sns_ohms':[],'amp_gain':[],'af_mohms':[],'delta_mohms':[]}
+        
+        # Protocol-compliant SMA_status fields based on tfnode_messages_pb2.py
+        self.SMA_status = {
+            # Current state fields (from SMAStatusCompact) - protocol compliant
+            'device_port': None,                # Device device_port (DEVICE_PORT1/PORT2)
+            'enabled': None,                    # bool enabled
+            'mode': None,                       # SMAControlMode mode (current active mode)
+            'setpoint': None,                   # float setpoint (current active setpoint)
+            'output_pwm': [],                   # float output_pwm
+            'load_amps': [],                    # float load_amps
+            'load_vdrop': [],                   # float load_vdrop  
+            'load_mohms': [],                   # float load_mohms
+            
+            # Default/configuration fields (from SMAControllerSettings - only in dump status)
+            'default_mode': None,               # SMAControlMode default_mode
+            'default_setpoint': None,           # float default_setpoint
+            'rctrl_kp': None,                   # float rctrl_kp
+            'rctrl_ki': None,                   # float rctrl_ki
+            'rctrl_kd': None,                   # float rctrl_kd
+            
+            # Additional dump status fields (from SMAStatusDump) - protocol compliant
+            'vld_scalar': None,                 # float vld_scalar
+            'vld_offset': None,                 # float vld_offset
+            'r_sns_ohms': [],                   # float r_sns_ohms
+            'amp_gain': [],                     # float amp_gain
+            'af_mohms': [],                     # float af_mohms
+            'delta_mohms': [],                  # float delta_mohms
+            'trainState': None,                 # TrainState trainState
+        }
 
     def cleanup(self):
         """Clean up muscle resources"""
@@ -496,11 +616,16 @@ class Muscle:
         return status_string
     
     def getResistance(self):
-        """Get the most recent resistance reading"""
-        resistance_list = self.SMA_status.get('r_sns_ohms', [])
+        """Get the most recent resistance reading using protocol-compliant field names"""
+        # Use protocol-compliant field names
+        resistance_list = self.SMA_status.get('load_mohms', [])
+        if not resistance_list:
+            # Fall back to alternative resistance field
+            resistance_list = self.SMA_status.get('r_sns_ohms', [])
+        
         if isinstance(resistance_list, list) and resistance_list:
             return resistance_list[0]  # Return most recent value
-        return resistance_list  # Return the value as-is if not a list
+        return resistance_list if resistance_list is not None else 0.0
     
     def changeMusclemos(self, mosfetnum:int):
         '''
@@ -550,7 +675,8 @@ class Muscle:
         
         if not setpoint:
             raise KeyError("Command 'setSetpoint' requires setpoint argument.")
-        self.masternode.setSetpoint(mode, self.portNum, setpoint)      
+        # Fixed parameter order: setpoint, conmode, device (not mode, portNum, setpoint)
+        self.masternode.setSetpoint(setpoint, mode, self.portNum)
     
     def setEnable(self, bool):
         '''
@@ -567,5 +693,30 @@ class Muscle:
         else:
             self.masternode.disable(self)
          
+    def status(self, type='compact'):
+        """Request status for this specific muscle
+        
+        Args:
+            type (str): Status type - 'compact' or 'dump'
+        """
+        if not self.masternode:
+            D.debug(DEBUG_LEVELS['ERROR'], "Muscle", f"Muscle {self.portNum}: No master node attached")
+            return None
+            
+        device = f'm{self.portNum+1}'  # Convert portNum to device format (m1, m2)
+        return self.masternode.status(type, device=device)
+    
+    def getCurrentReading(self):
+        """Get the most recent current reading, requesting status if needed"""
+        load_amps = self.SMA_status.get('load_amps', [])
+        if not load_amps:
+            # Request fresh status
+            self.status('compact')
+            load_amps = self.SMA_status.get('load_amps', [])
+        
+        if isinstance(load_amps, list) and load_amps:
+            return load_amps[0]  # Return most recent value
+        return load_amps if load_amps is not None else 0.0
+
 #----------------------------------------------------------------------------------------------------
 

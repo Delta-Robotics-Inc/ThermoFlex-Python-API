@@ -1,51 +1,115 @@
 '''
-Test for ThermoFlex Session Logging
+Test for ThermoFlex Session Logging - Updated for Protocol Compliance
 '''
 
 import thermoflex as tf
 import time as t
-#write tests that send commands
 
+tf.set_debug_level('INFO')
 
-network = tf.discover() #input the product id and returns a list of nodes available
-node0 = network[0].self_node
-network[0].refreshDevices()
-muscle = tf.devices.Muscle
-# Example of how to characaterize muscles. 
-muscle1 = muscle(_port = 0, resist= 300, diam= 2, length= 150)
-muscle2 = muscle(_port = 1, resist= 290, diam= 2, length= 145)
+def test_session_logging():
+    print("=== THERMOFLEX SESSION LOGGING TEST ===\n")
+    
+    try:
+        # Use modern API to get node
+        node = tf.get_usb_node(timeout=10.0)
+        print(f"Connected to node: {'.'.join(str(b) for b in node.id)}")
+        
+        # Access muscles using modern interface
+        muscle1 = node.muscle0  # First muscle (port 0)
+        muscle2 = node.muscle1  # Second muscle (port 1)
+        
+        print(f"Muscle 1 (port {muscle1.portNum})")
+        print(f"Muscle 2 (port {muscle2.portNum})")
+        
+        # Enable logging
+        node.setLogmode(1)  # Enable logging
+        print("Logging enabled")
+        
+        # Get initial status
+        t.sleep(0.1)
+        node.status('compact', device='all')
+        t.sleep(1.0)
+        
+        # Display initial status using protocol-compliant fields
+        print(f"\n=== Initial Status (Protocol-Compliant Fields) ===")
+        print(f"Node uptime: {node.node_status.get('uptime')}")
+        print(f"Supply voltage: {node.node_status.get('volt_supply')}")
+        
+        for i, muscle in enumerate([muscle1, muscle2]):
+            print(f"Muscle {i}:")
+            print(f"  enabled: {muscle.SMA_status.get('enabled')}")
+            print(f"  mode: {muscle.SMA_status.get('mode')}")
+            print(f"  setpoint: {muscle.SMA_status.get('setpoint')}")
+            print(f"  load_amps: {muscle.SMA_status.get('load_amps', [])[:3] if muscle.SMA_status.get('load_amps') else 'None'}")
+        
+        # Select muscle to test
+        m_to_train = muscle1  # Test with first muscle
+        
+        print(f"\n=== Muscle Training Test ===")
+        print(f"Testing muscle on port {m_to_train.portNum}")
+        
+        # Muscle setup
+        m_to_train.setMode("percent")
+        print("Set mode to percent")
+        t.sleep(1)
+        
+        m_to_train.setSetpoint(conmode="percent", setpoint=0.1)  # Start low for safety
+        print("Set setpoint to 0.1 (10%)")
+        t.sleep(1)
+        
+        # Training program timing
+        wait1 = 5   # Reduced for testing
+        wait2 = 2   # Reduced for testing
+        
+        print(f"\n=== Test Control Script ===")
+        print("Enabling muscle...")
+        m_to_train.setEnable(True)
+        
+        print(f"Running for {wait1} seconds...")
+        for i in range(wait1):
+            t.sleep(1)
+            # Get status update
+            m_to_train.status('compact')
+            t.sleep(0.1)
+            
+            current = m_to_train.getCurrentReading()
+            voltage = m_to_train.SMA_status.get('load_vdrop', [])
+            voltage_val = voltage[0] if isinstance(voltage, list) and voltage else voltage
+            
+            print(f"  {i+1}s - Current: {current:.3f}A, Voltage: {voltage_val}")
+        
+        print("Disabling muscle...")
+        m_to_train.setEnable(False)
+        t.sleep(wait2)
+        
+        print("Training sequence complete")
+        
+        # Final status check
+        node.status('compact', device='all')
+        t.sleep(1)
+        
+        print(f"\n=== Final Status ===")
+        for i, muscle in enumerate([muscle1, muscle2]):
+            print(f"Muscle {i}:")
+            print(f"  enabled: {muscle.SMA_status.get('enabled')}")
+            print(f"  final current: {muscle.getCurrentReading():.3f}A")
+        
+        print("\n✅ Session logging test completed successfully")
+        
+    except Exception as e:
+        print(f"❌ Error during test: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    finally:
+        print("\nDisabling all muscles and shutting down...")
+        try:
+            node.disableAll()
+            node.setLogmode(0)  # Disable logging
+        except:
+            pass
+        tf.endAll(timeout=5.0)
 
-node0.attachMuscle(muscle1, 0) #takes the mosfet number muscle params to muscle
-node0.attachMuscle(muscle2, 0)
-node0.logstate["printlog"]=True
-#node0.logstate["filelog"]=True #sets filelogging to true
-node0.logstate["binarylog"]=True #sets the logpath and logging to true
-
-t.sleep(0.1)
-node0.status('compact')
-
-m_to_train = muscle1  # Just set to the muscle port that should be trained
-
-# Muscle setup
-m_to_train.setMode("percent")  # Train mode does not work yet.  This is the best way for now until we meet and discuss how train mode will work.
-
-m_to_train.setSetpoint(setpoint = 0.1)  # Dial this value in but start low!  Keep in mind that smoking should occur sometime near the end of the 50 seconds when this value is tuned in.
-
-# Specify training program wait values
-
-
-wait1 = 30
-wait2 = 10
-
-
-# Test Control Script
-m_to_train.setEnable(True)
-t.sleep(wait1)
-node0.disableAll() # Disable all at end of program (or disable just m_to_train)
-node0.setLogmode(0)
-tf.endAll()
-
-# This is a new feature, but it would create a plot like I created in my niti-train-program.py based on the data stored to this text file.  You can parse it to create the sensor data arrays and then plot using the exact same method I used in my script
-#tf.plotting(output_path)
-
-#tf.userinput()
+if __name__ == "__main__":
+    test_session_logging()

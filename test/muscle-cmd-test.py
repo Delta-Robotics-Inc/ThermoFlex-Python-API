@@ -11,7 +11,7 @@ COMMAND_CHANGE_INTERVAL = 5
 STATUS_THREAD_INTERVAL = 10
 END_TEST_FLAG = False
 
-tf.set_debug_level('DEBUG')
+tf.set_debug_level('INFO')
 
 #Establish a connection to the testnet and testnode
 testnode = tf.get_usb_node()
@@ -28,22 +28,48 @@ async def muscle_status_monitor(muscle):
         
         if END_TEST_FLAG:
             break
+        
+        # Request fresh muscle status using new device targeting
+        # Use node status with device='all' to get complete status including setpoint/mode
+        muscle.masternode.status('compact', device='all')  # Request compact status from all devices
+        await asyncio.sleep(0.5)  # Give time for response
             
         status = muscle.SMA_status
-        # Get the current setpoint of the muscle
-        setpoint = status['SMA_deafult_setpoint']
-        print(f"Muscle Setpoint: {setpoint}")
+        print(f"\n=== DEBUG: Raw SMA_status data ===")
+        for key, value in status.items():
+            if value is not None and (not isinstance(value, list) or value):
+                print(f"  {key}: {value} (type: {type(value)})")
+        print("=== End raw data ===\n")
+        
+        # Get the current setpoint of the muscle - now using protocol-compliant field names
+        setpoint = status.get('setpoint')  # Protocol-compliant field name
+        print(f"Muscle Setpoint: {setpoint} (raw value)")
+        
+        # Check if setpoint is a reasonable value or garbage data
+        if setpoint is not None:
+            if abs(setpoint) > 100.0:  # Unreasonably large setpoint
+                print(f"⚠️  WARNING: Setpoint value {setpoint} appears to be garbage data")
+                setpoint = status.get('default_setpoint')  # Try fallback
+                print(f"Fallback to default_setpoint: {setpoint}")
+            else:
+                print(f"✅ Setpoint appears valid: {setpoint}")
+        else:
+            print("❌ Setpoint field is None/missing")
+            setpoint = status.get('default_setpoint')  # Fallback to default setpoint
+            print(f"Fallback to default_setpoint: {setpoint}")
 
-        # Get the current mode of the muscle
-        mode = status['SMA_default_mode']
+        # Get the current mode of the muscle - protocol-compliant field
+        mode = status.get('mode')  # Protocol-compliant field name
         print(f"Muscle Mode: {mode}")
 
-        # Get the current current of the muscle
-        current = status['load_amps']
-        print(f"Muscle Current: {current}")
+        # Get the current current of the muscle - using new method
+        current = muscle.getCurrentReading()
+        print(f"Muscle Current: {current} A")
 
-        # Get the current voltage of the muscle
-        voltage = status['load_voltdrop']
+        # Get the current voltage of the muscle - protocol-compliant field name
+        voltage = status.get('load_vdrop', [])
+        if isinstance(voltage, list) and voltage:
+            voltage = voltage[0]
         print(f"Muscle Voltage: {voltage}")
         
         # Get the muscle status
@@ -53,6 +79,8 @@ async def muscle_status_monitor(muscle):
         # Get the resistance of the muscle
         resistance = muscle.getResistance()
         print(f"Muscle Resistance: {resistance}")
+        
+        print("---")
 
 def test_muscle_commands(muscle):
     """Test muscle commands in the main process"""
