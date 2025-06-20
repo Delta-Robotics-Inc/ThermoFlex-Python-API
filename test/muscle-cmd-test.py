@@ -62,8 +62,18 @@ async def muscle_status_monitor(muscle):
         mode = status.get('mode')  # Protocol-compliant field name
         print(f"Muscle Mode: {mode}")
 
-        # Get the current current of the muscle - using new method
-        current = muscle.getCurrentReading()
+        # Get the current resistance of the muscle using new accessor method
+        resistance = muscle.get_resistance()
+        print(f"Muscle Resistance: {resistance} mΩ (raw value)")
+        
+        # Test resistance reading logic
+        if resistance is not None and resistance > 0:
+            print(f"  Resistance reading is valid: {resistance:.2f} mΩ")
+        else:
+            print(f"  Warning: Invalid or zero resistance ({resistance})")
+        
+        # Get the current reading using new accessor method
+        current = muscle.get_current()
         print(f"Muscle Current: {current} A")
 
         # Get the current voltage of the muscle - protocol-compliant field name
@@ -76,32 +86,68 @@ async def muscle_status_monitor(muscle):
         status_string = muscle.muscleStatus()
         print(f"Muscle Status: {status_string}")
 
-        # Get the resistance of the muscle
-        resistance = muscle.getResistance()
-        print(f"Muscle Resistance: {resistance}")
-        
         print("---")
 
 def test_muscle_commands(muscle):
     """Test muscle commands in the main process"""
     print("Starting muscle command tests...")
     
-    # Set the mode of the muscle
+    # Test 1: No-load current measurement (proper method)
+    print(f"\n=== No-Load Current Measurement ===")
+    print("Testing proper no-load current measurement...")
+    print("Setting up muscle: PWM mode, 0% setpoint, ENABLED...")
+    
+    # Manual setup for no-load current measurement
+    muscle.setMode("percent")  # PWM mode
+    muscle.setSetpoint(conmode="percent", setpoint=0.0)  # 0% setpoint
+    muscle.setEnable(True)  # ENABLED (critical for accurate measurement)
+    
+    # Wait for stabilization
+    print("Waiting 2 seconds for stabilization...")
+    t.sleep(2.0)
+    
+    # Get fresh status and current reading
+    muscle.status('compact')
+    t.sleep(0.1)
+    no_load_current = muscle.get_current()
+    
+    print(f"✅ No-load current: {no_load_current:.4f} A")
+    print("(Muscle enabled with 0% PWM setpoint for accurate measurement)")
+    
+    # Disable after measurement
+    muscle.setEnable(False)
+    t.sleep(COMMAND_CHANGE_INTERVAL)
+    
+    # Test 2: Set the mode of the muscle
+    print(f"\n=== Mode Control Test ===")
     muscle.setMode(conmode="amps")
-    print(f"Muscle Mode: {muscle.cmode}")
+    print(f"Muscle Mode set to: {muscle.cmode}")
     t.sleep(COMMAND_CHANGE_INTERVAL)
 
-    # Set a setpoint for the muscle
+    # Test 3: Set a setpoint for the muscle
+    print(f"\n=== Setpoint Control Test ===")
     muscle.setSetpoint(conmode="percent", setpoint=0.75)
     print("Setpoint set to 0.75 in percent mode.")
     t.sleep(COMMAND_CHANGE_INTERVAL)
 
-    # Enable the muscle
+    # Test 4: Enable the muscle with load
+    print(f"\n=== Enable/Load Test ===")
     muscle.setEnable(True)
-    print("Muscle enabled.")
+    print("Muscle enabled with load.")
     t.sleep(COMMAND_CHANGE_INTERVAL)
+    
+    # Get current under load for comparison
+    muscle.status('compact')
+    t.sleep(0.5)
+    load_current = muscle.get_current()
+    print(f"Current under load: {load_current:.4f} A")
+    
+    if no_load_current is not None and load_current is not None:
+        current_increase = load_current - no_load_current
+        print(f"Current increase from no-load: {current_increase:.4f} A")
 
-    # Disable the muscle
+    # Test 5: Disable the muscle
+    print(f"\n=== Disable Test ===")
     muscle.setEnable(False)
     print("Muscle disabled.")
     t.sleep(COMMAND_CHANGE_INTERVAL)

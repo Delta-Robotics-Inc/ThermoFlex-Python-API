@@ -73,11 +73,15 @@ def test_session_logging():
             m_to_train.status('compact')
             t.sleep(0.1)
             
-            current = m_to_train.getCurrentReading()
-            voltage = m_to_train.SMA_status.get('load_vdrop', [])
-            voltage_val = voltage[0] if isinstance(voltage, list) and voltage else voltage
+            # Log the resistance and voltage drop during training using new accessor methods
+            current = m_to_train.get_current()
+            print(f"Current during training: {current:.3f}A")
             
-            print(f"  {i+1}s - Current: {current:.3f}A, Voltage: {voltage_val}")
+            resistance = m_to_train.get_resistance()
+            print(f"Resistance during training: {resistance:.1f} mΩ")
+            
+            v_drop = m_to_train.get_voltage_drop()
+            print(f"Voltage drop during training: {v_drop:.3f}V")
         
         print("Disabling muscle...")
         m_to_train.setEnable(False)
@@ -93,7 +97,7 @@ def test_session_logging():
         for i, muscle in enumerate([muscle1, muscle2]):
             print(f"Muscle {i}:")
             print(f"  enabled: {muscle.SMA_status.get('enabled')}")
-            print(f"  final current: {muscle.getCurrentReading():.3f}A")
+            print(f"  final current: {muscle.get_current():.3f}A")
         
         print("\n✅ Session logging test completed successfully")
         

@@ -41,7 +41,7 @@ muscle.setEnable(True)
 
 start_time = time.time()
 while time.time() - start_time < 2:
-    resistance = muscle.getResistance()
+    resistance = muscle.get_resistance()
     resistances.append(resistance)
     print(f"Resistance: {resistance}")
     tf.delay(0.1)
@@ -49,7 +49,7 @@ while time.time() - start_time < 2:
 muscle.setSetpoint("percent", 0.3)
 start_time = time.time()
 while time.time() - start_time < 2:
-    resistance = muscle.getResistance()
+    resistance = muscle.get_resistance()
     resistances.append(resistance)
     print(f"Resistance: {resistance}")
     tf.delay(0.1)
@@ -57,7 +57,7 @@ while time.time() - start_time < 2:
 muscle.setSetpoint("percent", 0.4)
 start_time = time.time()
 while time.time() - start_time < 2:
-    resistance = muscle.getResistance()
+    resistance = muscle.get_resistance()
     resistances.append(resistance)
     print(f"Resistance: {resistance}")
     tf.delay(0.1)
@@ -65,7 +65,7 @@ while time.time() - start_time < 2:
 muscle.setSetpoint("percent", 0.5)
 start_time = time.time()
 while time.time() - start_time < 2:
-    resistance = muscle.getResistance()
+    resistance = muscle.get_resistance()
     resistances.append(resistance)
     print(f"Resistance: {resistance}")
     tf.delay(0.1)

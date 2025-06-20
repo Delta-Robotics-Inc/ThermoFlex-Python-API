@@ -431,7 +431,7 @@ class Node:
         elif type(device) == str:
 
             if device == 'all':
-                for m in self.muscles:
+                for m in self.muscles.values():
                     muscl = f"m{m.portNum+1}"     
                     cmode = conmode
                     command = command_t(self, name = SS, device = muscl, params = [cmode, setpoint])
@@ -447,7 +447,7 @@ class Node:
                         command = command_t(self, name = SS, device = muscl, params = [cmode, setpoint])
                         self.net.command_buff.append(command)
                     else:
-                        for y in self.muscles:
+                        for y in self.muscles.values():
                             if int(x) == y.mosfetnum:
                                 muscl = f"m{y.portNum+1}"
                                 cmode = conmode
@@ -548,6 +548,140 @@ class Node:
         """
         return self.status(type, device='all')
 
+    # ============================================================================
+    # Node Status Accessor Methods
+    # ============================================================================
+    
+    def get_supply_voltage(self) -> float:
+        """Get the current supply voltage reading in volts.
+        
+        Returns:
+            float: Supply voltage in volts, or None if not available
+        """
+        return self.node_status.get('volt_supply')
+    
+    def get_uptime(self) -> int:
+        """Get the node uptime in milliseconds.
+        
+        Returns:
+            int: Uptime in milliseconds, or None if not available
+        """
+        return self.node_status.get('uptime')
+    
+    def get_error_code(self) -> int:
+        """Get the most recent error code.
+        
+        Returns:
+            int: Most recent error code, or None if no errors
+        """
+        errors = self.node_status.get('errors', [])
+        return errors[0] if errors else None
+    
+    def get_error_history(self) -> list:
+        """Get the complete error history.
+        
+        Returns:
+            list: List of error codes (most recent first), empty list if no errors
+        """
+        return self.node_status.get('errors', []).copy()
+    
+    def get_potentiometer_value(self) -> float:
+        """Get the current potentiometer reading.
+        
+        Returns:
+            float: Potentiometer value, or None if not available
+        """
+        return self.node_status.get('pot_values')
+    
+    def get_log_interval(self) -> int:
+        """Get the current logging interval in milliseconds.
+        
+        Returns:
+            int: Log interval in milliseconds, or None if not available
+        """
+        return self.node_status.get('log_interval')
+    
+    def get_voltage_divider_scalar(self) -> float:
+        """Get the voltage divider scalar value.
+        
+        Returns:
+            float: VRD scalar value, or None if not available
+        """
+        return self.node_status.get('vrd_scalar')
+    
+    def get_voltage_divider_offset(self) -> float:
+        """Get the voltage divider offset value.
+        
+        Returns:
+            float: VRD offset value, or None if not available
+        """
+        return self.node_status.get('vrd_offset')
+    
+    def get_max_current(self) -> float:
+        """Get the maximum current limit.
+        
+        Returns:
+            float: Maximum current in amps, or None if not available
+        """
+        return self.node_status.get('max_current')
+    
+    def get_min_supply_voltage(self) -> float:
+        """Get the minimum supply voltage threshold.
+        
+        Returns:
+            float: Minimum supply voltage in volts, or None if not available
+        """
+        return self.node_status.get('min_v_supply')
+    
+    def get_firmware_version(self) -> str:
+        """Get the firmware version string.
+        
+        Returns:
+            str: Firmware version (e.g., "1.2"), or None if not available
+        """
+        return self.firmware
+    
+    def get_board_version(self) -> str:
+        """Get the board version string.
+        
+        Returns:
+            str: Board version (e.g., "2.1"), or None if not available
+        """
+        return self.board_version
+    
+    def get_can_id(self) -> int:
+        """Get the CAN bus ID.
+        
+        Returns:
+            int: CAN ID, or None if not available
+        """
+        return self.canid
+    
+    def get_node_id_string(self) -> str:
+        """Get the node ID as a formatted string.
+        
+        Returns:
+            str: Node ID in format "1.0.17"
+        """
+        return ".".join(str(b) for b in self.id)
+    
+    def get_node_active_status(self) -> bool:
+        """Check if the node is currently active (responding to heartbeats).
+        
+        Returns:
+            bool: True if node is active, False otherwise
+        """
+        return self.is_active
+    
+    def has_errors(self) -> bool:
+        """Check if the node has any recorded errors.
+        
+        Returns:
+            bool: True if there are errors, False otherwise
+        """
+        errors = self.node_status.get('errors', [])
+        return len(errors) > 0
+
 #---------------------------------------------------------------------------------------  
 
 class Muscle:
@@ -615,18 +749,6 @@ class Muscle:
         D.debug(DEBUG_LEVELS['DEBUG'], "Muscle", f"Muscle {self.portNum}: Status = {status_string}")
         return status_string
     
-    def getResistance(self):
-        """Get the most recent resistance reading using protocol-compliant field names"""
-        # Use protocol-compliant field names
-        resistance_list = self.SMA_status.get('load_mohms', [])
-        if not resistance_list:
-            # Fall back to alternative resistance field
-            resistance_list = self.SMA_status.get('r_sns_ohms', [])
-        
-        if isinstance(resistance_list, list) and resistance_list:
-            return resistance_list[0]  # Return most recent value
-        return resistance_list if resistance_list is not None else 0.0
-    
     def changeMusclemos(self, mosfetnum:int):
         '''
         
@@ -673,7 +795,7 @@ class Muscle:
         else:
             mode = command_t.modedef.index(self.cmode)        
         
-        if not setpoint:
+        if setpoint is None:
             raise KeyError("Command 'setSetpoint' requires setpoint argument.")
         # Fixed parameter order: setpoint, conmode, device (not mode, portNum, setpoint)
         self.masternode.setSetpoint(setpoint, mode, self.portNum)
@@ -706,17 +828,212 @@ class Muscle:
         device = f'm{self.portNum+1}'  # Convert portNum to device format (m1, m2)
         return self.masternode.status(type, device=device)
     
-    def getCurrentReading(self):
-        """Get the most recent current reading, requesting status if needed"""
-        load_amps = self.SMA_status.get('load_amps', [])
-        if not load_amps:
-            # Request fresh status
-            self.status('compact')
-            load_amps = self.SMA_status.get('load_amps', [])
+    # ============================================================================
+    # Muscle Status Accessor Methods
+    # ============================================================================
+    
+    def is_enabled(self) -> bool:
+        """Check if the muscle is currently enabled.
         
+        Returns:
+            bool: True if enabled, False if disabled, None if unknown
+        """
+        return self.SMA_status.get('enabled')
+    
+    def get_mode(self) -> int:
+        """Get the current control mode.
+        
+        Returns:
+            int: Current control mode (SMAControlMode enum), or None if not available
+        """
+        return self.SMA_status.get('mode')
+    
+    def get_setpoint(self) -> float:
+        """Get the current setpoint value.
+        
+        Returns:
+            float: Current setpoint value, or None if not available
+        """
+        return self.SMA_status.get('setpoint')
+    
+    def get_output_pwm(self) -> float:
+        """Get the most recent PWM output value.
+        
+        Returns:
+            float: Most recent PWM output value, or None if not available
+        """
+        output_pwm = self.SMA_status.get('output_pwm', [])
+        if isinstance(output_pwm, list) and output_pwm:
+            return output_pwm[0]  # Return most recent value
+        return output_pwm
+    
+    def get_current(self) -> float:
+        """Get the most recent current reading in amps.
+        
+        Returns:
+            float: Most recent current reading in amps, or None if not available
+        """
+        load_amps = self.SMA_status.get('load_amps', [])
         if isinstance(load_amps, list) and load_amps:
             return load_amps[0]  # Return most recent value
-        return load_amps if load_amps is not None else 0.0
+        return load_amps
+    
+    def get_current_history(self) -> list:
+        """Get the complete current reading history.
+        
+        Returns:
+            list: List of current readings (most recent first), empty list if no data
+        """
+        load_amps = self.SMA_status.get('load_amps', [])
+        return load_amps.copy() if isinstance(load_amps, list) else []
+    
+    def get_voltage_drop(self) -> float:
+        """Get the most recent voltage drop reading in volts.
+        
+        Returns:
+            float: Most recent voltage drop in volts, or None if not available
+        """
+        load_vdrop = self.SMA_status.get('load_vdrop', [])
+        if isinstance(load_vdrop, list) and load_vdrop:
+            return load_vdrop[0]  # Return most recent value
+        return load_vdrop
+    
+    def get_resistance(self) -> float:
+        """Get the most recent resistance reading in milliohms.
+        
+        Returns:
+            float: Most recent resistance in milliohms, or None if not available
+        """
+        load_mohms = self.SMA_status.get('load_mohms', [])
+        if isinstance(load_mohms, list) and load_mohms:
+            return load_mohms[0]  # Return most recent value
+        return load_mohms
+    
+    def get_resistance_history(self) -> list:
+        """Get the complete resistance reading history.
+        
+        Returns:
+            list: List of resistance readings in milliohms (most recent first)
+        """
+        load_mohms = self.SMA_status.get('load_mohms', [])
+        return load_mohms.copy() if isinstance(load_mohms, list) else []
+    
+    def get_device_port(self) -> int:
+        """Get the device port enum value.
+        
+        Returns:
+            int: Device port enum (DEVICE_PORT1=3, DEVICE_PORT2=4), or None if not available
+        """
+        return self.SMA_status.get('device_port')
+    
+    def get_port_number(self) -> int:
+        """Get the muscle port number (0-based).
+        
+        Returns:
+            int: Port number (0 for first muscle, 1 for second muscle, etc.)
+        """
+        return self.portNum
+    
+    def get_muscle_id(self) -> str:
+        """Get a formatted muscle identifier string.
+        
+        Returns:
+            str: Muscle ID in format "Node_ID.port_number" (e.g., "1.0.17.0")
+        """
+        if self.masternode:
+            node_id = self.masternode.get_node_id_string()
+            return f"{node_id}.{self.portNum}"
+        return f"unattached.{self.portNum}"
+    
+    # Default/Configuration Accessors (dump status only)
+    
+    def get_default_mode(self) -> int:
+        """Get the default control mode (dump status only).
+        
+        Returns:
+            int: Default control mode, or None if not available
+        """
+        return self.SMA_status.get('default_mode')
+    
+    def get_default_setpoint(self) -> float:
+        """Get the default setpoint value (dump status only).
+        
+        Returns:
+            float: Default setpoint value, or None if not available
+        """
+        return self.SMA_status.get('default_setpoint')
+    
+    def get_pid_kp(self) -> float:
+        """Get the PID Kp (proportional) gain value (dump status only).
+        
+        Returns:
+            float: PID Kp gain, or None if not available
+        """
+        return self.SMA_status.get('rctrl_kp')
+    
+    def get_pid_ki(self) -> float:
+        """Get the PID Ki (integral) gain value (dump status only).
+        
+        Returns:
+            float: PID Ki gain, or None if not available
+        """
+        return self.SMA_status.get('rctrl_ki')
+    
+    def get_pid_kd(self) -> float:
+        """Get the PID Kd (derivative) gain value (dump status only).
+        
+        Returns:
+            float: PID Kd gain, or None if not available
+        """
+        return self.SMA_status.get('rctrl_kd')
+    
+    def get_train_state(self) -> int:
+        """Get the current training state.
+        
+        Returns:
+            int: Training state enum value, or None if not available
+        """
+        return self.SMA_status.get('trainState')
+    
+    # Advanced diagnostic accessors (dump status only)
+    
+    def get_voltage_load_scalar(self) -> float:
+        """Get the voltage load scalar value (dump status only).
+        
+        Returns:
+            float: VLD scalar value, or None if not available
+        """
+        return self.SMA_status.get('vld_scalar')
+    
+    def get_voltage_load_offset(self) -> float:
+        """Get the voltage load offset value (dump status only).
+        
+        Returns:
+            float: VLD offset value, or None if not available
+        """
+        return self.SMA_status.get('vld_offset')
+    
+    def get_sense_resistance(self) -> float:
+        """Get the most recent sense resistance reading (dump status only).
+        
+        Returns:
+            float: Most recent sense resistance in ohms, or None if not available
+        """
+        r_sns_ohms = self.SMA_status.get('r_sns_ohms', [])
+        if isinstance(r_sns_ohms, list) and r_sns_ohms:
+            return r_sns_ohms[0]  # Return most recent value
+        return r_sns_ohms
+    
+    def get_amplifier_gain(self) -> float:
+        """Get the most recent amplifier gain reading (dump status only).
+        
+        Returns:
+            float: Most recent amplifier gain, or None if not available
+        """
+        amp_gain = self.SMA_status.get('amp_gain', [])
+        if isinstance(amp_gain, list) and amp_gain:
+            return amp_gain[0]  # Return most recent value
+        return amp_gain
 
 #----------------------------------------------------------------------------------------------------
 

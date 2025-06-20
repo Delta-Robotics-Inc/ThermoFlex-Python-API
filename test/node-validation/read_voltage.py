@@ -60,9 +60,9 @@ def sample_voltage(nodes, duration=10.0, interval=0.1, out_file="./voltage_readi
                     node.status("compact", device='node')
                     time.sleep(0.05)  # Brief wait for response
                     
-                    # Get supply voltage using protocol-compliant field name
-                    v_supply = node.node_status.get("v_supply")  # Protocol: v_supply
-                    nid = ".".join(str(b) for b in node.id)
+                    # Get supply voltage using clean accessor method
+                    v_supply = node.get_supply_voltage()
+                    nid = node.get_node_id_string()
                     timestamp = time.time()
                     
                     # Validate data before writing

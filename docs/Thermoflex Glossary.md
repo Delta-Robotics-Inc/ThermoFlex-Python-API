@@ -80,6 +80,32 @@
 | .missed_heartbeats  | Counter for missed heartbeats                                                  |
 | .heartbeat_timeout  | Timeout period for heartbeat monitoring                                        |
 
+### **Node Status Accessor Methods**
+
+| **Accessor Method**                  | **Function**                                                                                                                              |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| get_supply_voltage()                 | Returns float: Current supply voltage reading in volts, or None if not available                                                         |
+| get_uptime()                         | Returns int: Node uptime in milliseconds, or None if not available                                                                       |
+| get_error_code()                     | Returns int: Most recent error code, or None if no errors                                                                                |
+| get_error_history()                  | Returns list: Complete error history (most recent first), empty list if no errors                                                       |
+| has_errors()                         | Returns bool: True if there are errors, False otherwise                                                                                  |
+| get_potentiometer_value()            | Returns float: Current potentiometer reading, or None if not available                                                                   |
+| get_node_id_string()                 | Returns str: Node ID as formatted string in format "1.0.17"                                                                             |
+| get_firmware_version()               | Returns str: Firmware version (e.g., "1.2"), or None if not available                                                                   |
+| get_board_version()                  | Returns str: Board version (e.g., "2.1"), or None if not available                                                                      |
+| get_can_id()                         | Returns int: CAN bus ID, or None if not available                                                                                        |
+| get_node_active_status()             | Returns bool: True if node is active (responding to heartbeats), False otherwise                                                         |
+
+#### **Advanced Node Accessors (dump status only)**
+
+| **Advanced Accessor Method**         | **Function**                                                                                                                              |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| get_log_interval()                   | Returns int: Current logging interval in milliseconds, or None if not available                                                          |
+| get_max_current()                    | Returns float: Maximum current limit in amps, or None if not available                                                                   |
+| get_min_supply_voltage()             | Returns float: Minimum supply voltage threshold in volts, or None if not available                                                       |
+| get_voltage_divider_scalar()         | Returns float: VRD scalar value, or None if not available                                                                                |
+| get_voltage_divider_offset()         | Returns float: VRD offset value, or None if not available                                                                                |
+
 ## Muscle
 
 | **Muscle Command**                   | **Function**                                                                                                                                  |
@@ -88,6 +114,39 @@
 | setMode(conmode)                 | Sets the data type that a given muscle receives for its setSetpoint() command; conmode : (percent, volts, amps, ohms, train)              |
 | setSetpoint(setpoint:float)      | Sets the setpoint of the muscle at the node.                                                                                              |
 | setEnable(bool)                  | Sets the enable status of the muscle in the node.                                                                                         |
+| status(type)                     | Request status for this specific muscle; type: ('compact' or 'dump')                                                                      |
+
+### **Muscle Status Accessor Methods**
+
+| **Accessor Method**                  | **Function**                                                                                                                              |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| is_enabled()                         | Returns bool: True if enabled, False if disabled, None if unknown                                                                        |
+| get_mode()                           | Returns int: Current control mode (SMAControlMode enum), or None if not available                                                        |
+| get_setpoint()                       | Returns float: Current setpoint value, or None if not available                                                                          |
+| get_current()                        | Returns float: Most recent current reading in amps, or None if not available                                                             |
+| get_current_history()                | Returns list: Complete current reading history (most recent first), empty list if no data                                               |
+| get_voltage_drop()                   | Returns float: Most recent voltage drop reading in volts, or None if not available                                                       |
+| get_resistance()                     | Returns float: Most recent resistance reading in milliohms, or None if not available                                                     |
+| get_resistance_history()             | Returns list: Complete resistance reading history in milliohms (most recent first)                                                       |
+| get_output_pwm()                     | Returns float: Most recent PWM output value, or None if not available                                                                    |
+| get_port_number()                    | Returns int: Port number (0 for first muscle, 1 for second muscle, etc.)                                                                |
+| get_device_port()                    | Returns int: Device port enum (DEVICE_PORT1=3, DEVICE_PORT2=4), or None if not available                                                |
+| get_muscle_id()                      | Returns str: Formatted muscle ID in format "Node_ID.port_number" (e.g., "1.0.17.0")                                                     |
+
+#### **Advanced Muscle Accessors (dump status only)**
+
+| **Advanced Accessor Method**         | **Function**                                                                                                                              |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| get_default_mode()                   | Returns int: Default control mode, or None if not available                                                                              |
+| get_default_setpoint()               | Returns float: Default setpoint value, or None if not available                                                                          |
+| get_pid_kp()                         | Returns float: PID Kp (proportional) gain value, or None if not available                                                                |
+| get_pid_ki()                         | Returns float: PID Ki (integral) gain value, or None if not available                                                                    |
+| get_pid_kd()                         | Returns float: PID Kd (derivative) gain value, or None if not available                                                                  |
+| get_train_state()                    | Returns int: Training state enum value, or None if not available                                                                         |
+| get_voltage_load_scalar()            | Returns float: VLD scalar value, or None if not available                                                                                |
+| get_voltage_load_offset()            | Returns float: VLD offset value, or None if not available                                                                                |
+| get_sense_resistance()               | Returns float: Most recent sense resistance reading in ohms, or None if not available                                                    |
+| get_amplifier_gain()                 | Returns float: Most recent amplifier gain, or None if not available                                                                      |
 
 | **Muscle Attributes** | Purpose                                                    |
 | --------------------- | ---------------------------------------------------------- |

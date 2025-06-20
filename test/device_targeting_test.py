@@ -49,10 +49,10 @@ def test_device_targeting():
         print(f"   Muscle 0 current after portall: {muscle0_current_after[:3] if isinstance(muscle0_current_after, list) and muscle0_current_after else muscle0_current_after}")
         print(f"   Muscle 1 current after portall: {muscle1_current_after[:3] if isinstance(muscle1_current_after, list) and muscle1_current_after else muscle1_current_after}")
         
-        # Test 4: Request from individual muscle
+        # Test 4: Request from individual muscle using new accessor methods
         print(f"\n4. Testing individual muscle status...")
-        current_muscle0 = node.muscle0.getCurrentReading()
-        current_muscle1 = node.muscle1.getCurrentReading()
+        current_muscle0 = node.muscle0.get_current()
+        current_muscle1 = node.muscle1.get_current()
         print(f"   Muscle 0 current reading: {current_muscle0}")
         print(f"   Muscle 1 current reading: {current_muscle1}")
         
