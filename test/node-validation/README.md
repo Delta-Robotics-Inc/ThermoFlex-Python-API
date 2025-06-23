@@ -15,6 +15,7 @@ This directory contains sensor validation scripts for ThermoFlex Nodes. The goal
 | `read_voltage.py` | Supply voltage validation | `voltage_readings.csv` |
 | `no_load_current.py` | No-load current baseline | `no_load_current.csv` |
 | `current_pulse.py` | Current control validation | `current_pulse.csv` |
+| `validation_flow.py` | Full interactive validation flow | `test/out/<node_id>_*/` |
 
 ## Quick Start
 
@@ -47,6 +48,16 @@ python current_pulse.py --target 2.5 --pulse 1.0 --duration 5 --outfile pulse.cs
 ```
 
 **Safety Note:** Ensure the target current is safe for your connected loads. The script will prompt for confirmation before starting.
+
+### 4. Comprehensive Validation Flow
+
+Runs all validation conditions in sequence. The script will prompt for each power and load configuration and saves data to a timestamped directory under `test/out`.
+
+```bash
+python validation_flow.py --duration 6 --interval 0.1
+```
+
+**Tip:** Use this after connecting a single controller. Repeat for additional controllers and compare the CSV files.
 
 ## Script Parameters
 
