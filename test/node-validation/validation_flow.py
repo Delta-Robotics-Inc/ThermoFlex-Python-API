@@ -360,84 +360,92 @@ def sample_loop(
         - enabled: Muscle enable status
     """
 
-    with csv_path.open("w", newline="") as csvfile:
-        writer = csv.writer(csvfile)
-        # Write standardized CSV header for all test conditions
-        writer.writerow(
-            [
-                "timestamp",
-                "node_id",
-                "firmware",
-                "port",
-                "supply_cond",
-                "load_cond",
-                "waveform",
-                "setpoint_pct",
-                "supply_v",
-                "load_v",
-                "current_a",
-                "resistance_mohms",
-                "enabled",
-            ]
-        )
-        csvfile.flush()
-
-        start = time.time()
-        while time.time() - start < duration:
-            elapsed = time.time() - start
-            
-            # Calculate setpoint based on waveform function (static or dynamic)
-            setpoint = setpoint_func(elapsed)
-            
-            # Configure muscle controller for this measurement
-            muscle.setSetpoint(conmode="percent", setpoint=setpoint)
-            muscle.setEnable(True)
-
-            # Request fresh sensor data from node
-            node.status("compact", device="all")
-            time.sleep(0.05)  # Brief wait for status response
-
-            # Collect sensor readings using clean accessor methods
-            supply_v = node.get_supply_voltage()
-            vdrop = muscle.get_voltage_drop()
-            
-            # Calculate load voltage (voltage actually applied to load)
-            # This is critical for understanding actual power delivery
-            load_v = (
-                (supply_v - vdrop)
-                if supply_v is not None and vdrop is not None
-                else None
-            )
-            
-            current = muscle.get_current()
-            resistance = muscle.get_resistance()
-            enabled = muscle.is_enabled()
-
-            # Write timestamped data row with all measurements and metadata
+    try:
+        with csv_path.open("w", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            # Write standardized CSV header for all test conditions
             writer.writerow(
                 [
-                    time.time(),
-                    node.get_node_id_string(),
-                    node.get_firmware_version(),
-                    muscle.get_port_number(),
-                    context["supply"],
-                    context["load"],
-                    context["waveform"],
-                    setpoint,
-                    supply_v,
-                    load_v,
-                    current,
-                    resistance,
-                    enabled,
+                    "timestamp",
+                    "node_id",
+                    "firmware",
+                    "port",
+                    "supply_cond",
+                    "load_cond",
+                    "waveform",
+                    "setpoint_pct",
+                    "supply_v",
+                    "load_v",
+                    "current_a",
+                    "resistance_mohms",
+                    "enabled",
                 ]
             )
             csvfile.flush()
 
-            # Maintain consistent sampling rate
-            time.sleep(max(0, interval))
+            start = time.time()
+            next_sample_time = start
+            
+            while time.time() - start < duration:
+                # Calculate when this sample should be taken for consistent timing
+                sample_start_time = time.time()
+                elapsed = sample_start_time - start
+                
+                # Calculate setpoint based on waveform function (static or dynamic)
+                setpoint = setpoint_func(elapsed)
+                
+                # Configure muscle controller for this measurement
+                muscle.setSetpoint(conmode="percent", setpoint=setpoint)
+                muscle.setEnable(True)
 
-    # Safety: Always disable muscle after test completion
-    muscle.setEnable(False)
+                # Request fresh sensor data from node
+                node.status("compact", device="all")
+                time.sleep(0.05)  # Brief wait for status response
+
+                # Collect sensor readings using clean accessor methods
+                supply_v = node.get_supply_voltage()
+                vdrop = muscle.get_voltage_drop()
+                
+                # Calculate load voltage (voltage actually applied to load)
+                # This is critical for understanding actual power delivery
+                load_v = (
+                    (supply_v - vdrop)
+                    if supply_v is not None and vdrop is not None
+                    else None
+                )
+                
+                current = muscle.get_current()
+                resistance = muscle.get_resistance()
+                enabled = muscle.is_enabled()
+
+                # Write timestamped data row with all measurements and metadata
+                writer.writerow(
+                    [
+                        time.time(),
+                        node.get_node_id_string(),
+                        node.get_firmware_version(),
+                        muscle.get_port_number(),
+                        context["supply"],
+                        context["load"],
+                        context["waveform"],
+                        setpoint,
+                        supply_v,
+                        load_v,
+                        current,
+                        resistance,
+                        enabled,
+                    ]
+                )
+                csvfile.flush()
+
+                # Calculate time spent on processing and sleep only for remaining interval
+                processing_time = time.time() - sample_start_time
+                sleep_time = max(0, interval - processing_time)
+                time.sleep(sleep_time)
+
+    finally:
+        # Safety: Always disable muscle, even if an exception occurs
+        muscle.setEnable(False)
 
 
 # ---------------------------------------------------------------------------
@@ -780,7 +788,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--cooldown",
         type=float,
-        default=1.0,
+        default=30.0,
         help="Cooldown time in seconds when using a muscle load",
     )
     parser.add_argument("--outdir", default="test/out", help="Base output directory")
