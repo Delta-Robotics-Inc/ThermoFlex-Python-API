@@ -42,6 +42,7 @@ from __future__ import annotations
 import argparse
 import csv
 import os
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -51,8 +52,125 @@ import thermoflex as tf
 
 
 # ---------------------------------------------------------------------------
+# Color utilities
+# ---------------------------------------------------------------------------
+
+class Colors:
+    """ANSI color codes for terminal output."""
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+    
+    # Standard colors
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    MAGENTA = '\033[95m'
+    CYAN = '\033[96m'
+    WHITE = '\033[97m'
+    
+    # Background colors
+    BG_RED = '\033[101m'
+    BG_GREEN = '\033[102m'
+    BG_YELLOW = '\033[103m'
+
+
+def colored(text: str, color: str = '', bold: bool = False) -> str:
+    """Return colored text for terminal output.
+    
+    Args:
+        text (str): Text to colorize
+        color (str): Color code from Colors class
+        bold (bool): Whether to make text bold
+        
+    Returns:
+        str: Formatted text with color codes
+    """
+    prefix = ''
+    if bold:
+        prefix += Colors.BOLD
+    if color:
+        prefix += color
+    
+    if prefix:
+        return f"{prefix}{text}{Colors.RESET}"
+    return text
+
+
+def print_step(message: str) -> None:
+    """Print a step message in cyan."""
+    print(colored(f"🔧 {message}", Colors.CYAN, bold=True))
+
+
+def print_info(message: str) -> None:
+    """Print an info message in blue."""
+    print(colored(f"ℹ️  {message}", Colors.BLUE))
+
+
+def print_success(message: str) -> None:
+    """Print a success message in green."""
+    print(colored(f"✅ {message}", Colors.GREEN, bold=True))
+
+
+def print_warning(message: str) -> None:
+    """Print a warning message in yellow."""
+    print(colored(f"⚠️  {message}", Colors.YELLOW, bold=True))
+
+
+def print_error(message: str) -> None:
+    """Print an error message in red."""
+    print(colored(f"❌ {message}", Colors.RED, bold=True))
+
+
+def print_auto_mode(message: str) -> None:
+    """Print an auto mode message in magenta."""
+    print(colored(f"🤖 [AUTO MODE] {message}", Colors.MAGENTA))
+
+
+# ---------------------------------------------------------------------------
+# Global state
+# ---------------------------------------------------------------------------
+
+# Auto mode can be activated by typing 'all' at any prompt
+auto_mode = False
+
+
+# ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
+
+
+def play_chime() -> None:
+    """Play a system chime to alert the operator.
+    
+    This function attempts to play a system notification sound to alert the
+    operator that input is required. It tries multiple methods across different
+    operating systems for maximum compatibility.
+    
+    Purpose:
+        - Provides audio notification when operator input is needed
+        - Helps operators notice prompts in noisy environments
+        - Works across different operating systems
+        
+    Behavior:
+        - Tries Windows system beep first (most common in lab environments)
+        - Falls back to terminal bell character for Unix-like systems
+        - Fails gracefully if no audio method is available
+    """
+    try:
+        # Try Windows system beep
+        if sys.platform.startswith('win'):
+            import winsound
+            winsound.Beep(800, 500)  # 800Hz for 500ms
+        else:
+            # Fallback to terminal bell for Unix-like systems
+            print('\a', end='', flush=True)
+    except ImportError:
+        # winsound not available, use terminal bell
+        print('\a', end='', flush=True)
+    except Exception:
+        # No audio available, continue silently
+        pass
 
 
 def prompt_wait(message: str) -> None:
@@ -69,20 +187,39 @@ def prompt_wait(message: str) -> None:
         - Provides human-in-the-loop control for physical test setup
         - Ensures proper test conditions before data collection
         - Allows operator to verify connections and configurations
+        - Type 'all' at any prompt to enable auto mode for remaining tests
     """
-
-    input(f"{message}\nPress Enter when ready...")
-
-
-def cooldown_wait(seconds: int) -> None:
-    """Display a simple countdown while waiting for the muscle to cool.
+    global auto_mode
     
-    When testing with real SMA muscles, thermal effects can influence subsequent
-    measurements. This function provides a visual countdown to ensure adequate
-    cooling time between tests.
+    if auto_mode:
+        print_auto_mode(message)
+        print_auto_mode("Continuing automatically...")
+        time.sleep(0.5)  # Brief pause for readability
+        return
+    
+    play_chime()  # Alert operator that input is needed
+    prompt_text = colored(f"{message}", Colors.CYAN, bold=True)
+    hint_text = colored("(or type 'all' for auto mode)", Colors.YELLOW)
+    user_input = input(f"{prompt_text}\nPress Enter when ready {hint_text}...")
+    
+    # Check if user wants to switch to auto mode
+    if user_input.strip().lower() == 'all':
+        auto_mode = True
+        print(f"\n{colored('*** SWITCHING TO AUTO MODE ***', Colors.MAGENTA, bold=True)}")
+        print_auto_mode("No more operator prompts or audio alerts will be played.")
+        print_auto_mode("The test will continue automatically through all conditions.")
+        print()
+
+
+def cooldown_wait(seconds: float) -> None:
+    """Display a simple countdown while waiting for test loads to cool.
+    
+    When testing with real SMA muscles or power resistors, thermal effects can 
+    influence subsequent measurements. This function provides a visual countdown 
+    to ensure adequate cooling time between tests.
     
     Args:
-        seconds (int): Cooldown duration in seconds
+        seconds (float): Cooldown duration in seconds
         
     Purpose:
         - Prevents thermal carryover effects between tests
@@ -97,11 +234,15 @@ def cooldown_wait(seconds: int) -> None:
 
     if seconds <= 0:
         return
-    print(f"Waiting {seconds}s for cooldown...")
-    for remaining in range(seconds, 0, -1):
-        print(f"  {remaining}s remaining", end="\r", flush=True)
+    
+    # Convert to integer for countdown display
+    seconds_int = int(seconds)
+    print_info(f"Waiting {seconds}s for cooldown...")
+    for remaining in range(seconds_int, 0, -1):
+        countdown_text = colored(f"  ⏱️  {remaining}s remaining", Colors.YELLOW)
+        print(countdown_text, end="\r", flush=True)
         time.sleep(1)
-    print("  0s remaining")
+    print(colored("  ✅ Cooldown complete", Colors.GREEN))
     print()
 
 
@@ -117,6 +258,42 @@ def ensure_dir(path: Path) -> None:
         - Handles existing directories gracefully
     """
     path.mkdir(parents=True, exist_ok=True)
+
+
+def check_node_active_status(node: tf.Node) -> bool:
+    """Check if the ThermoFlex node is still active and communicating.
+    
+    This function verifies that the node is still responding and in an active
+    state before proceeding with tests. If the node becomes unresponsive or
+    reports an inactive status, testing should be halted.
+    
+    Args:
+        node (tf.Node): ThermoFlex node object to check
+        
+    Returns:
+        bool: True if node is active and responding, False otherwise
+        
+    Purpose:
+        - Prevents attempting tests on disconnected or failed nodes
+        - Provides early detection of communication failures
+        - Ensures test data integrity by validating node state
+        
+    Behavior:
+        - Requests fresh status from node
+        - Checks node active status flag
+        - Returns False if any communication errors occur
+    """
+    try:
+        # Request fresh status to ensure we have current information
+        node.status("dump", device="all")
+        time.sleep(0.1)  # Brief pause for status update
+        
+        # Check if node reports as active
+        is_active = node.get_node_active_status()
+        return is_active
+    except Exception as e:
+        print_error(f"Error checking node status: {e}")
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -340,7 +517,7 @@ def pwm_ramp(start: float, end: float, ramp_time: float) -> Callable[[float], fl
 def run_validation_flow(
     duration: float = 6.0,
     interval: float = 0.1,
-    cooldown: int = 30,
+    cooldown: float = 30.0,
     outdir: Path | str = "test/out",
 ) -> None:
     """Execute the complete validation flow across all test conditions.
@@ -353,7 +530,8 @@ def run_validation_flow(
     Args:
         duration (float): Duration of each individual test in seconds
         interval (float): Time between sensor readings within each test
-        cooldown (int): Cooldown time in seconds when testing with muscles
+        cooldown (float): Cooldown time in seconds when testing with muscles
+                         (resistors use half this time for their cooldown)
         outdir (Path | str): Base output directory for test results
         
     Purpose:
@@ -399,10 +577,15 @@ def run_validation_flow(
         - Always disables muscles after each test
         - Provides cooldown periods for thermal management
         - Confirms setup before starting measurements
+        - Checks node active status before each test
+        - Exits gracefully if node becomes unresponsive
+        - Logs failed tests to metadata for debugging
     """
     
     # Initialize connection to ThermoFlex node
     node = tf.get_usb_node(timeout=10.0)
+    node.status("dump", device="all") # dump for extra info
+    time.sleep(1) # wait for status to update
     node_id = node.get_node_id_string()
     firmware = node.get_firmware_version()
     board = node.get_board_version()
@@ -422,9 +605,14 @@ def run_validation_flow(
         writer.writerow(["firmware_version", firmware])
         writer.writerow(["board_version", board])
 
-    print(f"Output directory: {run_dir}")
-    print(f"Node ID: {node_id}")
-    print(f"Firmware: {firmware}\n")
+    print_success(f"Output directory: {run_dir}")
+    print_info(f"Node ID: {node_id}")
+    print_info(f"Firmware: {firmware}")
+    print(colored("Type 'all' at any prompt to switch to auto mode.", Colors.YELLOW))
+    print()
+
+    # Track any failed tests for metadata logging
+    failed_tests = []
 
     # Define test matrix - all combinations will be tested systematically
     
@@ -468,6 +656,23 @@ def run_validation_flow(
 
                 # STATIC PWM TESTS: Test steady-state behavior at fixed power levels
                 for level in pwm_levels:
+                    # Check node status before each test
+                    if not check_node_active_status(node):
+                        test_name = f"port{port}_{supply}_{load}_pwm{int(level)}"
+                        failed_tests.append(test_name)
+                        print_error(f"Node is not active! Aborting test: {test_name}")
+                        print_warning("Node has become unresponsive or reported inactive status.")
+                        print_warning("Please check node connection and power before retrying.")
+                        
+                        # Write failed test info to metadata and exit
+                        with meta_path.open("a", newline="") as metafile:
+                            writer = csv.writer(metafile)
+                            writer.writerow(["failed_test", test_name])
+                            writer.writerow(["failure_reason", "Node inactive or unresponsive"])
+                        
+                        print_info(f"Partial results saved to: {run_dir}")
+                        return  # Exit the entire validation flow
+                    
                     context = {
                         "supply": supply,
                         "load": load,
@@ -476,7 +681,7 @@ def run_validation_flow(
                     csv_file = (
                         run_dir / f"port{port}_{supply}_{load}_pwm{int(level)}.csv"
                     )
-                    print(f"Running PWM {level}% test -> {csv_file.name}")
+                    print_step(f"Running PWM {level}% test -> {csv_file.name}")
                     
                     # Execute test with static PWM waveform
                     sample_loop(
@@ -489,19 +694,39 @@ def run_validation_flow(
                         context,
                     )
                     
-                    # Cooldown only needed when testing with real muscles
+                    # Cooldown needed when testing with loads that can heat up
                     # (prevents thermal effects from affecting subsequent tests)
                     if load == "muscle":
                         cooldown_wait(cooldown)
+                    elif load == "resistor":
+                        # Power resistors also heat up and need cooldown time
+                        cooldown_wait(cooldown // 2)  # Half the muscle cooldown time
 
                 # DYNAMIC PWM RAMP TEST: Test response to changing power levels
+                # Check node status before ramp test
+                if not check_node_active_status(node):
+                    test_name = f"port{port}_{supply}_{load}_ramp"
+                    failed_tests.append(test_name)
+                    print_error(f"Node is not active! Aborting test: {test_name}")
+                    print_warning("Node has become unresponsive or reported inactive status.")
+                    print_warning("Please check node connection and power before retrying.")
+                    
+                    # Write failed test info to metadata and exit
+                    with meta_path.open("a", newline="") as metafile:
+                        writer = csv.writer(metafile)
+                        writer.writerow(["failed_test", test_name])
+                        writer.writerow(["failure_reason", "Node inactive or unresponsive"])
+                    
+                    print_info(f"Partial results saved to: {run_dir}")
+                    return  # Exit the entire validation flow
+                
                 context = {
                     "supply": supply,
                     "load": load,
                     "waveform": "pwm_ramp",
                 }
                 ramp_file = run_dir / f"port{port}_{supply}_{load}_ramp.csv"
-                print(f"Running PWM ramp test -> {ramp_file.name}")
+                print_step(f"Running PWM ramp test -> {ramp_file.name}")
                 
                 # Execute test with linear ramp from 0% to 100% PWM
                 sample_loop(
@@ -514,17 +739,29 @@ def run_validation_flow(
                     context,
                 )
                 
-                # Cooldown after ramp test if using real muscle
+                # Cooldown after ramp test if using loads that heat up
                 if load == "muscle":
                     cooldown_wait(cooldown)
+                elif load == "resistor":
+                    # Power resistors also heat up during ramp tests
+                    cooldown_wait(cooldown // 2)  # Half the muscle cooldown time
 
     # Collect operator comments for test documentation
     comment = input("\nEnter any comments about this test run (optional): ")
+    
+    # Write final metadata including test completion status
     with meta_path.open("a", newline="") as metafile:
         writer = csv.writer(metafile)
         writer.writerow(["user_comment", comment])
+        writer.writerow(["auto_mode_used", "yes" if auto_mode else "no"])
+        
+        # Record test completion status
+        if failed_tests:
+            writer.writerow(["failed_test", "; ".join(failed_tests)])
+        else:
+            writer.writerow(["failed_test", "none"])
 
-    print("Validation flow complete. Files saved to:", run_dir)
+    print_success(f"Validation flow complete! Files saved to: {run_dir}")
 
 
 # ---------------------------------------------------------------------------
@@ -542,8 +779,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--cooldown",
-        type=int,
-        default=30,
+        type=float,
+        default=1.0,
         help="Cooldown time in seconds when using a muscle load",
     )
     parser.add_argument("--outdir", default="test/out", help="Base output directory")
