@@ -708,7 +708,7 @@ def run_validation_flow(
                         cooldown_wait(cooldown)
                     elif load == "resistor":
                         # Power resistors also heat up and need cooldown time
-                        cooldown_wait(cooldown // 2)  # Half the muscle cooldown time
+                        cooldown_wait(cooldown / 2)  # Half the muscle cooldown time
 
                 # DYNAMIC PWM RAMP TEST: Test response to changing power levels
                 # Check node status before ramp test
