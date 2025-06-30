@@ -79,7 +79,7 @@ class Node:
         self.canid = None
         self.firmware = None
         self.board_version = None
-        self.node_status = {'uptime':None, 'errors':[],'volt_supply':None,'pot_values':None,'log_interval':None,'vrd_scalar':None,'vrd_offset':None,'max_current':None,'min_v_supply':None}
+        self.node_status = {'uptime':None, 'errors':[],'volt_supply':None,'pot_values':None,'log_interval':None,'vrd_scalar':None,'vrd_offset':None,'max_current':None,'min_v_supply':None,'v_supply_raw':None}
         self.mosports = mosports
         self.muscles = {}
         self.logstate = {'printlog':False, 'binarylog':False, 'filelog': False}
@@ -293,8 +293,20 @@ class Node:
             if resp_type[2] == 'dump':
                 if 'can_id' in resp_data:
                     self.canid = resp_data['can_id']
-                if 'firmware_version' in resp_data and 'firmware_subversion' in resp_data:
-                    self.firmware = f"{resp_data['firmware_version']}.{resp_data['firmware_subversion']}"
+                
+                # Handle firmware version - supports both X.X and X.X.X formats
+                major = resp_data.get('firmware_version_major')
+                minor = resp_data.get('firmware_version_minor')
+                if major is not None and minor is not None:
+                    # New X.X.X format (patch defaults to 0 if not present)
+                    patch = resp_data.get('firmware_version_patch', 0)
+                    self.firmware = f"{major}.{minor}.{patch}"
+                else:
+                    # Legacy X.X format (backward compatibility)
+                    major = resp_data.get('firmware_version')
+                    minor = resp_data.get('firmware_subversion')
+                    if major is not None and minor is not None:
+                        self.firmware = f"{major}.{minor}"
                 if 'board_version' in resp_data and 'board_subversion' in resp_data:
                     self.board_version = f"{resp_data['board_version']}.{resp_data['board_subversion']}"
                 if 'muscle_cnt' in resp_data:
@@ -560,6 +572,14 @@ class Node:
         """
         return self.node_status.get('volt_supply')
     
+    def get_supply_voltage_raw(self) -> int:
+        """Get the raw ADC reading for supply voltage (before scaling).
+        
+        Returns:
+            int: Raw ADC reading, (0-1023) or None if not available
+        """
+        return self.node_status.get('v_supply_raw')
+    
     def get_uptime(self) -> int:
         """Get the node uptime in milliseconds.
         
@@ -637,7 +657,7 @@ class Node:
         """Get the firmware version string.
         
         Returns:
-            str: Firmware version (e.g., "1.2"), or None if not available
+            str: Firmware version in X.X.X format (e.g., "1.2.13"), or None if not available
         """
         return self.firmware
     

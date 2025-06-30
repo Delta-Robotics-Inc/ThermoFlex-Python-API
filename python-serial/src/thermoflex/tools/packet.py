@@ -154,9 +154,10 @@ def deconst_serial_response(data):
             settings = dump.loaded_settings
             response_dict['can_id'] = settings.can_id
             
-            # Dump-specific fields
-            response_dict['firmware_version'] = dump.firmware_version
-            response_dict['firmware_subversion'] = dump.firmware_subversion
+            # Dump-specific fields - X.X.X firmware version format
+            response_dict['firmware_version_major'] = dump.firmware_version_major
+            response_dict['firmware_version_minor'] = dump.firmware_version_minor
+            response_dict['firmware_version_patch'] = dump.firmware_version_patch
             response_dict['board_version'] = dump.board_version
             response_dict['board_subversion'] = dump.board_subversion
             response_dict['muscle_cnt'] = dump.muscle_cnt
@@ -235,7 +236,7 @@ class command_t:
                    "heartbeat": [0xFE, []],
                    "reset": [0xFF, []]
 			       } 
-    devicedef = ("all", "node","portall", "m1", "m2")
+    devicedef = ("all", "node","portall", "m1", "m2")  # Note: m1 maps to PORT0, m2 maps to PORT1
 	
     modedef = ("percent" , "amps", "volts", "ohms", "train", "count")
     
@@ -298,9 +299,9 @@ class command_t:
         elif self.devcode == 2:
             device_code = tfproto.Device.DEVICE_PORTALL
         elif self.devcode == 3:
-            device_code = tfproto.Device.DEVICE_PORT1
+            device_code = tfproto.Device.DEVICE_PORT0  # Updated: was DEVICE_PORT1
         elif self.devcode == 4:
-            device_code = tfproto.Device.DEVICE_PORT2
+            device_code = tfproto.Device.DEVICE_PORT1  # Updated: was DEVICE_PORT2
 
         return device_code           
         

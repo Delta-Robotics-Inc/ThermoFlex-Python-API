@@ -375,6 +375,7 @@ def sample_loop(
                     "waveform",
                     "setpoint_pct",
                     "supply_v",
+                    "supply_v_raw",
                     "load_v",
                     "current_a",
                     "resistance_mohms",
@@ -404,6 +405,7 @@ def sample_loop(
 
                 # Collect sensor readings using clean accessor methods
                 supply_v = node.get_supply_voltage()
+                supply_v_raw = node.get_supply_voltage_raw()
                 vdrop = muscle.get_voltage_drop()
                 
                 # Calculate load voltage (voltage actually applied to load)
@@ -430,6 +432,7 @@ def sample_loop(
                         context["waveform"],
                         setpoint,
                         supply_v,
+                        supply_v_raw,
                         load_v,
                         current,
                         resistance,
