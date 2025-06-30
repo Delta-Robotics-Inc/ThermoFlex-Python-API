@@ -80,6 +80,9 @@ class Node:
         self.firmware = None
         self.board_version = None
         self.node_status = {'uptime':None, 'errors':[],'volt_supply':None,'pot_values':None,'log_interval':None,'vrd_scalar':None,'vrd_offset':None,'max_current':None,'min_v_supply':None,'v_supply_raw':None}
+        
+        # Configuration tracking - only populate from device status
+        self.node_config = {}
         self.mosports = mosports
         self.muscles = {}
         self.logstate = {'printlog':False, 'binarylog':False, 'filelog': False}
@@ -312,6 +315,12 @@ class Node:
                 if 'muscle_cnt' in resp_data:
                     if resp_data['muscle_cnt'] != len(self.muscles):
                         D.debug(DEBUG_LEVELS['WARNING'], 'StatusCheck', 'Number of muscles initialized does not match the number of muscles attached to Node.')
+                
+                # Update node configuration tracking from dump status
+                if 'can_id' in resp_data:
+                    self.node_config['can_id'] = resp_data['can_id']
+                if 'heartbeat_enabled' in resp_data:
+                    self.node_config['heartbeat_enabled'] = resp_data['heartbeat_enabled']
         
         elif resp_type[1] == 'SMA':
             D.debug(DEBUG_LEVELS['DEBUG'], 'updateStatus', f'Dispersing Muscle{resp_type[3]} status')
@@ -361,6 +370,27 @@ class Node:
                             musc.device_port = resp_data['device_port']
                     if 'trainState' in resp_data:
                         musc.train_state = resp_data['trainState']
+                    
+                    # Update muscle configuration tracking from dump status
+                    if resp_type[2] == 'dump':
+                        if 'default_mode' in resp_data:
+                            # Convert enum back to string
+                            mode_map = {0: 'percent', 1: 'amps', 2: 'volts', 3: 'ohms', 4: 'train', 5: 'count'}
+                            musc.muscle_config['default_mode'] = mode_map.get(resp_data['default_mode'], 'percent')
+                        if 'default_setpoint' in resp_data:
+                            musc.muscle_config['default_setpoint'] = resp_data['default_setpoint']
+                        if 'rctrl_kp' in resp_data:
+                            musc.muscle_config['rctrl_kp'] = resp_data['rctrl_kp']
+                        if 'rctrl_ki' in resp_data:
+                            musc.muscle_config['rctrl_ki'] = resp_data['rctrl_ki']
+                        if 'rctrl_kd' in resp_data:
+                            musc.muscle_config['rctrl_kd'] = resp_data['rctrl_kd']
+                        if 'cctrl_kp' in resp_data:
+                            musc.muscle_config['cctrl_kp'] = resp_data['cctrl_kp']
+                        if 'cctrl_ki' in resp_data:
+                            musc.muscle_config['cctrl_ki'] = resp_data['cctrl_ki']
+                        if 'cctrl_kd' in resp_data:
+                            musc.muscle_config['cctrl_kd'] = resp_data['cctrl_kd']
                         
                     D.debug(DEBUG_LEVELS['DEBUG'], 'updateStatus', f'Updated muscle {musc.portNum} with protocol-compliant data')
                     break
@@ -701,6 +731,87 @@ class Node:
         """
         errors = self.node_status.get('errors', [])
         return len(errors) > 0
+    
+    # ============================================================================
+    # Node Configuration Methods
+    # ============================================================================
+    
+    def configure_node(self, config: dict, save_to_flash: bool = False):
+        """Configure node-level settings
+        
+        Args:
+            config (dict): Configuration parameters
+            save_to_flash (bool): Whether to save configuration to non-volatile memory
+            
+        Example:
+            node.configure_node({
+                'heartbeat_enabled': True,
+                'can_id': 0x123
+            })
+        """
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Configuring node with {config}")
+        
+        # Validate configuration parameters
+        self._validate_node_config(config)
+        
+        # Update local configuration
+        self.node_config.update(config)
+        
+        # Add save flag if needed
+        config_to_send = config.copy()
+        if save_to_flash:
+            config_to_send['save_to_flash'] = True
+        
+        # Send configuration command
+        command = command_t(self, name="configure", params=[config_to_send], device="node")
+        self.net.command_buff.append(command)
+        
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Configuration command sent")
+    
+    def get_node_config(self, refresh: bool = False) -> dict:
+        """Get current node configuration
+        
+        Args:
+            refresh (bool): Whether to request fresh config from device
+            
+        Returns:
+            dict: Current node configuration
+        """
+        if refresh:
+            # Request dump status to get current settings
+            self.status("dump", device="node")
+            # Configuration will be updated via updateStatus()
+        
+        return self.node_config.copy()
+    
+    def reset_node_config(self, to_defaults: bool = True):
+        """Reset node configuration
+        
+        Args:
+            to_defaults (bool): Whether to reset to factory defaults
+        """
+        D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id}: Resetting configuration (defaults: {to_defaults})")
+        
+        if to_defaults:
+            config = {'reset_to_defaults': True}
+        else:
+            config = {'reset_to_saved': True}
+            
+        command = command_t(self, name="configure", params=[config], device="node")
+        self.net.command_buff.append(command)
+    
+    def _validate_node_config(self, config: dict):
+        """Validate node configuration parameters"""
+        validation_rules = {
+            'can_id': lambda x: isinstance(x, int) and 0 <= x <= 0x7FF,
+            'heartbeat_enabled': lambda x: isinstance(x, bool),
+        }
+        
+        for key, value in config.items():
+            if key in validation_rules:
+                if not validation_rules[key](value):
+                    raise ValueError(f"Invalid value for {key}: {value}")
+            # Allow unknown keys to pass through for future extensibility
 
 #---------------------------------------------------------------------------------------  
 
@@ -712,6 +823,9 @@ class Muscle:
         self.masternode = masternode
         self.enable_status = None
         self.train_state = None
+        
+        # Configuration tracking - only populate from device status
+        self.muscle_config = {}
         
         # Protocol-compliant SMA_status fields based on tfnode_messages_pb2.py
         self.SMA_status = {
@@ -731,6 +845,9 @@ class Muscle:
             'rctrl_kp': None,                   # float rctrl_kp
             'rctrl_ki': None,                   # float rctrl_ki
             'rctrl_kd': None,                   # float rctrl_kd
+            'cctrl_kp': None,                   # float cctrl_kp (current controller PID)
+            'cctrl_ki': None,                   # float cctrl_ki (current controller PID)
+            'cctrl_kd': None,                   # float cctrl_kd (current controller PID)
             
             # Additional dump status fields (from SMAStatusDump) - protocol compliant
             'vld_scalar': None,                 # float vld_scalar
@@ -740,6 +857,8 @@ class Muscle:
             'af_mohms': [],                     # float af_mohms
             'delta_mohms': [],                  # float delta_mohms
             'trainState': None,                 # TrainState trainState
+            'vld_raw': [],                      # uint32 vld_raw (raw voltage load ADC)
+            'curr_raw': [],                     # uint32 curr_raw (raw current ADC)
         }
 
     def cleanup(self):
@@ -1054,6 +1173,159 @@ class Muscle:
         if isinstance(amp_gain, list) and amp_gain:
             return amp_gain[0]  # Return most recent value
         return amp_gain
+    
+    def get_voltage_load_raw(self) -> int:
+        """Get the most recent raw voltage load ADC reading (dump status only).
+        
+        Returns:
+            int: Most recent raw ADC value for voltage load measurement, or None if not available
+        """
+        vld_raw = self.SMA_status.get('vld_raw', [])
+        if isinstance(vld_raw, list) and vld_raw:
+            return vld_raw[0]  # Return most recent value
+        return vld_raw
+    
+    def get_current_raw(self) -> int:
+        """Get the most recent raw current ADC reading (dump status only).
+        
+        Returns:
+            int: Most recent raw ADC value for current measurement, or None if not available
+        """
+        curr_raw = self.SMA_status.get('curr_raw', [])
+        if isinstance(curr_raw, list) and curr_raw:
+            return curr_raw[0]  # Return most recent value
+        return curr_raw
+    
+    # ============================================================================
+    # Muscle Configuration Methods
+    # ============================================================================
+    
+    def configure_muscle(self, config: dict, save_to_flash: bool = False):
+        """Configure muscle-specific settings
+        
+        Args:
+            config (dict): Configuration parameters
+            save_to_flash (bool): Whether to save configuration to non-volatile memory
+            
+        Example:
+            muscle.configure_muscle({
+                'default_mode': 'ohms',
+                'default_setpoint': 50.0,
+                'rctrl_kp': 2.0,
+                'rctrl_ki': 0.1
+            })
+        """
+        if not self.masternode:
+            raise ValueError("Muscle must be attached to a node before configuration")
+            
+        D.debug(DEBUG_LEVELS['INFO'], "Muscle", f"Muscle {self.portNum}: Configuring with {config}")
+        
+        # Validate configuration parameters
+        self._validate_muscle_config(config)
+        
+        # Update local configuration
+        self.muscle_config.update(config)
+        
+        # Add save flag if needed
+        config_to_send = config.copy()
+        if save_to_flash:
+            config_to_send['save_to_flash'] = True
+        
+        # Send configuration command
+        device = f'm{self.portNum+1}'  # Convert portNum to device format (m1, m2)
+        command = command_t(self.masternode, name="configure", params=[config_to_send], device=device)
+        self.masternode.net.command_buff.append(command)
+        
+        D.debug(DEBUG_LEVELS['INFO'], "Muscle", f"Muscle {self.portNum}: Configuration command sent")
+    
+    def get_muscle_config(self, refresh: bool = False) -> dict:
+        """Get current muscle configuration
+        
+        Args:
+            refresh (bool): Whether to request fresh config from device
+            
+        Returns:
+            dict: Current muscle configuration
+        """
+        if refresh and self.masternode:
+            # Request dump status to get current settings
+            device = f'm{self.portNum+1}'
+            self.masternode.status("dump", device=device)
+            # Configuration will be updated via updateStatus()
+        
+        return self.muscle_config.copy()
+    
+    def reset_muscle_config(self, to_defaults: bool = True):
+        """Reset muscle configuration
+        
+        Args:
+            to_defaults (bool): Whether to reset to factory defaults
+        """
+        if not self.masternode:
+            raise ValueError("Muscle must be attached to a node before configuration reset")
+            
+        D.debug(DEBUG_LEVELS['INFO'], "Muscle", f"Muscle {self.portNum}: Resetting configuration (defaults: {to_defaults})")
+        
+        if to_defaults:
+            config = {'reset_to_defaults': True}
+        else:
+            config = {'reset_to_saved': True}
+            
+        device = f'm{self.portNum+1}'
+        command = command_t(self.masternode, name="configure", params=[config], device=device)
+        self.masternode.net.command_buff.append(command)
+    
+    def configure_pid(self, controller: str, kp: float = None, ki: float = None, kd: float = None):
+        """Configure PID parameters for resistance or current control
+        
+        Args:
+            controller (str): Controller type - 'resistance' or 'current'
+            kp (float): Proportional gain
+            ki (float): Integral gain  
+            kd (float): Derivative gain
+            
+        Example:
+            muscle.configure_pid('resistance', kp=2.0, ki=0.1, kd=0.05)
+        """
+        if controller not in ['resistance', 'current']:
+            raise ValueError("Controller must be 'resistance' or 'current'")
+            
+        config = {}
+        prefix = 'rctrl' if controller == 'resistance' else 'cctrl'
+        
+        if kp is not None:
+            config[f'{prefix}_kp'] = kp
+        if ki is not None:
+            config[f'{prefix}_ki'] = ki
+        if kd is not None:
+            config[f'{prefix}_kd'] = kd
+            
+        if config:  # Only send if there are parameters to set
+            self.configure_muscle(config)
+            D.debug(DEBUG_LEVELS['INFO'], "Muscle", f"Muscle {self.portNum}: PID {controller} configured: {config}")
+        else:
+            D.debug(DEBUG_LEVELS['WARNING'], "Muscle", f"Muscle {self.portNum}: No PID parameters provided")
+    
+    def _validate_muscle_config(self, config: dict):
+        """Validate muscle configuration parameters"""
+        valid_modes = ['percent', 'amps', 'volts', 'ohms', 'train', 'count']
+        
+        validation_rules = {
+            'default_mode': lambda x: isinstance(x, str) and x in valid_modes,
+            'default_setpoint': lambda x: isinstance(x, (int, float)),
+            'rctrl_kp': lambda x: isinstance(x, (int, float)),  # Allow negative values for PID gains
+            'rctrl_ki': lambda x: isinstance(x, (int, float)),  # Allow negative values for PID gains
+            'rctrl_kd': lambda x: isinstance(x, (int, float)),  # Allow negative values for PID gains
+            'cctrl_kp': lambda x: isinstance(x, (int, float)),  # Allow negative values for PID gains
+            'cctrl_ki': lambda x: isinstance(x, (int, float)),  # Allow negative values for PID gains
+            'cctrl_kd': lambda x: isinstance(x, (int, float)),  # Allow negative values for PID gains
+        }
+        
+        for key, value in config.items():
+            if key in validation_rules:
+                if not validation_rules[key](value):
+                    raise ValueError(f"Invalid value for {key}: {value}")
+            # Allow unknown keys to pass through for future extensibility
 
 #----------------------------------------------------------------------------------------------------
 

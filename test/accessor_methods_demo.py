@@ -49,6 +49,9 @@ def dump_node_status(node):
     print(f"Voltage Divider Scalar: {node.get_voltage_divider_scalar()}")
     print(f"Voltage Divider Offset: {node.get_voltage_divider_offset()}")
     
+    # Raw sensor data (dump status only)
+    print(f"Supply Voltage Raw:     {node.get_supply_voltage_raw()} ADC")
+    
     print()
 
 def dump_muscle_status(muscle, muscle_name):
@@ -98,6 +101,10 @@ def dump_muscle_status(muscle, muscle_name):
     print(f"Voltage Load Offset:    {muscle.get_voltage_load_offset()}")
     print(f"Sense Resistance:       {muscle.get_sense_resistance()} Ω")
     print(f"Amplifier Gain:         {muscle.get_amplifier_gain()}")
+    
+    # Raw sensor data (dump status only)
+    print(f"Voltage Load Raw:       {muscle.get_voltage_load_raw()} ADC")
+    print(f"Current Raw:            {muscle.get_current_raw()} ADC")
     
     print()
 

@@ -153,6 +153,7 @@ def deconst_serial_response(data):
             # Node settings
             settings = dump.loaded_settings
             response_dict['can_id'] = settings.can_id
+            response_dict['heartbeat_enabled'] = settings.heartbeat_enabled
             
             # Dump-specific fields - X.X.X firmware version format
             response_dict['firmware_version_major'] = dump.firmware_version_major
@@ -166,6 +167,7 @@ def deconst_serial_response(data):
             response_dict['vrd_offset'] = dump.vrd_offset
             response_dict['max_current'] = dump.max_current
             response_dict['min_v_supply'] = dump.min_v_supply
+            response_dict['v_supply_raw'] = dump.v_supply_raw
 
         elif data.HasField('sma_status_compact'): 
             read_data += f' SMA compact {data.sma_status_compact.device_port}'
@@ -203,6 +205,9 @@ def deconst_serial_response(data):
             response_dict['rctrl_kp'] = settings.rctrl_kp
             response_dict['rctrl_ki'] = settings.rctrl_ki
             response_dict['rctrl_kd'] = settings.rctrl_kd
+            response_dict['cctrl_kp'] = settings.cctrl_kp
+            response_dict['cctrl_ki'] = settings.cctrl_ki
+            response_dict['cctrl_kd'] = settings.cctrl_kd
             
             # Additional dump fields - protocol compliant
             response_dict['vld_scalar'] = dump.vld_scalar
@@ -212,6 +217,8 @@ def deconst_serial_response(data):
             response_dict['af_mohms'] = dump.af_mohms
             response_dict['delta_mohms'] = dump.delta_mohms
             response_dict['trainState'] = dump.trainState
+            response_dict['vld_raw'] = dump.vld_raw
+            response_dict['curr_raw'] = dump.curr_raw
 
     D.debug(DEBUG_LEVELS['DEBUG'], "deconst_response_packet", f"Response Type: {read_data}")
     D.debug(DEBUG_LEVELS['DEBUG'], "deconst_response_packet", f"Response Packet Data: {response_dict}")
@@ -231,7 +238,7 @@ class command_t:
 			       "set-setpoint": [0x03, [int, float]], #mode, value
 			       "status": [0x04, [int]], #Update to match node firmware  
                    "log-mode": [0x05, [int]], #log mode(subject to change)
-			       "configure": [0x06,[int,int]],
+			       "configure": [0x06,[dict]],  # Enhanced: accepts configuration dictionary
                    "silence":[0x07,[bool]],
                    "heartbeat": [0xFE, []],
                    "reset": [0xFF, []]
@@ -280,7 +287,11 @@ class command_t:
        '''
        z = 0 
        for x in params:
-           if type(x) == self.commanddefs[command][1][z]:
+           # Special handling for configure command with dict parameter
+           if command == "configure" and isinstance(x, dict):
+               z += 1
+               continue
+           elif type(x) == self.commanddefs[command][1][z]:
                z+=1
                continue
            else:
@@ -332,6 +343,59 @@ class command_t:
             x = tfproto.DeviceStatusMode.STATUS_DUMP_READABLE
         return x
     
+    def _mode_str_to_enum(self, mode_str: str):
+        """Convert mode string to protobuf enum"""
+        mode_map = {
+            'percent': tfproto.SMAControlMode.MODE_PERCENT,
+            'amps': tfproto.SMAControlMode.MODE_AMPS, 
+            'volts': tfproto.SMAControlMode.MODE_VOLTS,
+            'ohms': tfproto.SMAControlMode.MODE_OHMS,
+            'train': tfproto.SMAControlMode.MODE_TRAIN,
+            'count': tfproto.SMAControlMode.MODE_CNT
+        }
+        return mode_map.get(mode_str, tfproto.SMAControlMode.MODE_PERCENT)
+    
+    def _build_node_config(self, config_dict: dict):
+        """Build NodeSettings protobuf from configuration dictionary"""
+        node_settings = tfproto.NodeSettings()
+        
+        # Map configuration dictionary to protobuf fields
+        # Only set fields that are provided in the config_dict
+        if 'can_id' in config_dict:
+            node_settings.can_id = config_dict['can_id']
+        if 'heartbeat_enabled' in config_dict:
+            node_settings.heartbeat_enabled = config_dict['heartbeat_enabled']
+        
+        return node_settings
+    
+    def _build_sma_config(self, config_dict: dict):
+        """Build SMAControllerSettings protobuf from configuration dictionary"""
+        sma_settings = tfproto.SMAControllerSettings()
+        
+        # Handle mode conversion
+        if 'default_mode' in config_dict:
+            mode_str = config_dict['default_mode']
+            mode_enum = self._mode_str_to_enum(mode_str)
+            sma_settings.default_mode = mode_enum
+        
+        # Map other fields directly
+        if 'default_setpoint' in config_dict:
+            sma_settings.default_setpoint = config_dict['default_setpoint']
+        if 'rctrl_kp' in config_dict:
+            sma_settings.rctrl_kp = config_dict['rctrl_kp']
+        if 'rctrl_ki' in config_dict:
+            sma_settings.rctrl_ki = config_dict['rctrl_ki']
+        if 'rctrl_kd' in config_dict:
+            sma_settings.rctrl_kd = config_dict['rctrl_kd']
+        if 'cctrl_kp' in config_dict:
+            sma_settings.cctrl_kp = config_dict['cctrl_kp']
+        if 'cctrl_ki' in config_dict:
+            sma_settings.cctrl_ki = config_dict['cctrl_ki']
+        if 'cctrl_kd' in config_dict:
+            sma_settings.cctrl_kd = config_dict['cctrl_kd']
+        
+        return sma_settings
+    
     def sConstruct(self):
         '''
         Constructs the .proto command from command_t object. Returns bytes string.
@@ -362,7 +426,16 @@ class command_t:
             node_cmd.status.repeating = True
         elif self.code == 0x06:
             node_cmd.configure_settings.device = self.get_device_code()
-            node_cmd.configure_settings.can_id = self.params[0]
+            
+            # Configuration based on device type
+            if self.device == "node":
+                # Configure NodeSettings
+                node_config = self._build_node_config(self.params[0])
+                node_cmd.configure_settings.node_config.CopyFrom(node_config)
+            elif self.device in ["m1", "m2", "portall"]:
+                # Configure SMAControllerSettings  
+                sma_config = self._build_sma_config(self.params[0])
+                node_cmd.configure_settings.sma_controller_config.CopyFrom(sma_config)
         elif self.code == 0x07:
             node_cmd.silence_node.silence = self.params[0]
         elif self.code == 0xFF:

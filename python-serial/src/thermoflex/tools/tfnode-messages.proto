@@ -202,9 +202,9 @@ message SMAControllerSettings {
   float rctrl_kp = 3;
   float rctrl_ki = 4;
   float rctrl_kd = 5;
-  float cctrl_kp = 6; // TODO build protobuf
-  float cctrl_ki = 7; // TODO build protobuf
-  float cctrl_kd = 8; // TODO build protobuf
+  float cctrl_kp = 6;
+  float cctrl_ki = 7;
+  float cctrl_kd = 8;
   // Add other SMAController-specific configuration settings
 }
 
@@ -230,7 +230,7 @@ message NodeStatusDump {
   // Make sure the following values are not included already in compact status
   uint32 firmware_version_major = 3;
   uint32 firmware_version_minor = 4;
-  uint32 firmware_version_patch = 13; // TODO can this be 5?
+  uint32 firmware_version_patch = 13;
   uint32 board_version = 5;
   uint32 board_subversion = 6;
   uint32 muscle_cnt = 7;

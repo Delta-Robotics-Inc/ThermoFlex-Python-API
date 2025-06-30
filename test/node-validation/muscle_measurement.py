@@ -131,7 +131,8 @@ def sample_muscle_data(nodes, duration=10.0, interval=0.1, outfile="muscle_data.
         
         # CSV data header
         writer.writerow(["timestamp", "node_id", "muscle", "load_amps", "voltage_drop", 
-                        "resistance_mohms", "enabled", "firmware_version", "supply_voltage", "supply_voltage_raw", "load_condition", "test_notes"])
+                        "resistance_mohms", "enabled", "firmware_version", "supply_voltage", "supply_voltage_raw", 
+                        "voltage_load_raw", "current_raw", "load_condition", "test_notes"])
         csvfile.flush()
         
         while time.time() - start_time < duration:
@@ -140,17 +141,15 @@ def sample_muscle_data(nodes, duration=10.0, interval=0.1, outfile="muscle_data.
             
             for node_idx, node in enumerate(nodes):
                 try:
-                    # Request status from all devices to get muscle data
-                    node.status("compact", device='all')
+                    # Request status from all devices to get muscle data including raw values
+                    node.status("dump", device='all')  # Use dump to get raw data
                     time.sleep(0.05)  # Brief wait for response
                     
                     # Get node info once per node
                     nid = ".".join(str(b) for b in node.id)
                     
-                    # Get firmware version and supply voltage (requires dump status, do it once per node)
+                    # Get firmware version and supply voltage (already requested dump above)
                     try:
-                        node.status("dump", device='node')
-                        time.sleep(0.05)  # Brief wait for response
                         firmware_version = node.get_firmware_version()
                         supply_voltage = node.get_supply_voltage()
                         supply_voltage_raw = node.get_supply_voltage_raw()
@@ -161,18 +160,22 @@ def sample_muscle_data(nodes, duration=10.0, interval=0.1, outfile="muscle_data.
                     
                     for muscle_key, muscle in node.muscles.items():
                         try:
-                            # Get readings using accessor methods
+                            # Get readings using accessor methods (scaled values)
                             current = muscle.get_current()
                             voltage_drop = muscle.get_voltage_drop()
                             resistance = muscle.get_resistance()
                             enabled = muscle.is_enabled()
                             
+                            # Get raw ADC readings (dump status only)
+                            voltage_load_raw = muscle.get_voltage_load_raw()
+                            current_raw = muscle.get_current_raw()
+                            
                             timestamp = time.time()
                             
-                            # Write data row with metadata
+                            # Write data row with metadata including raw values
                             writer.writerow([
                                 timestamp, nid, muscle_key, current, voltage_drop, resistance, enabled, firmware_version,
-                                supply_voltage, supply_voltage_raw,
+                                supply_voltage, supply_voltage_raw, voltage_load_raw, current_raw,
                                 metadata.get('supply_voltage', 'N/A') if metadata else 'N/A',
                                 metadata.get('load_condition', 'N/A') if metadata else 'N/A',
                                 metadata.get('test_notes', 'N/A') if metadata else 'N/A'
@@ -183,8 +186,9 @@ def sample_muscle_data(nodes, duration=10.0, interval=0.1, outfile="muscle_data.
                                 successful_samples += 1
                                 status_str = "ENABLED" if enabled else "disabled"
                                 fw_str = f" FW:{firmware_version}" if firmware_version != "N/A" else ""
+                                raw_str = f" (raw: V={voltage_load_raw}, I={current_raw})" if voltage_load_raw is not None and current_raw is not None else ""
                                 print(f"Sample {sample_count:3d} - Node {nid}{fw_str} muscle {muscle_key}: "
-                                      f"{current:.4f}A, {voltage_drop:.3f}V ({status_str})")
+                                      f"{current:.4f}A, {voltage_drop:.3f}V ({status_str}){raw_str}")
                             else:
                                 print(f"Sample {sample_count:3d} - Node {nid} muscle {muscle_key}: No data")
                                 
@@ -193,7 +197,7 @@ def sample_muscle_data(nodes, duration=10.0, interval=0.1, outfile="muscle_data.
                             # Write error entry
                             writer.writerow([
                                 time.time(), nid, muscle_key, "ERROR", "ERROR", "ERROR", "ERROR", firmware_version,
-                                "ERROR", "ERROR",  # supply_voltage, supply_voltage_raw
+                                "ERROR", "ERROR", "ERROR", "ERROR",  # supply_voltage, supply_voltage_raw, voltage_load_raw, current_raw
                                 metadata.get('supply_voltage', 'N/A') if metadata else 'N/A',
                                 metadata.get('load_condition', 'N/A') if metadata else 'N/A',
                                 metadata.get('test_notes', 'N/A') if metadata else 'N/A'
