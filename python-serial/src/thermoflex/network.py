@@ -266,6 +266,12 @@ class NodeNet:
         node = Node(len(self.active_nodes) + 1, self, n_id=node_id)
         self.active_nodes[node_id_tuple] = node
         D.debug(DEBUG_LEVELS['INFO'], self.debug_name, f"Added new node with ID {node_id}")
+        
+        # Request dump status from newly discovered node for firmware version checking
+        # This ensures version compatibility warnings are shown when nodes are first discovered
+        D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, f"Requesting dump status from new node {node_id} for firmware version checking...")
+        node.status('dump', device='node')
+        
         return node
 
     def remove_node(self, node_id: list[int], deactivate: bool = True):
@@ -328,7 +334,7 @@ class NodeNet:
         # Handle other packet types
         node = self.get_node(packet_node_id)
         if not node:
-            node = self.add_node(packet_node_id)
+            node = self.add_node(packet_node_id)  # This will automatically request dump status for version checking
             
         node.msgrec = True
         if 'status' in response[0]:
@@ -381,10 +387,12 @@ class NodeNet:
         '''
         Refreshes the network devices by sending a broadcast status command to all devices.
         Uses DEVICE_ALL to get status from both node and muscle controllers.
-        All devices on the network will respond with their status.
+        All devices on the network will respond with a full status dump.
         '''
-        # Request status from all devices (node + muscles) on all nodes
+        # Request compact status from all devices (node + muscles) on all nodes for basic discovery
+        D.debug(DEBUG_LEVELS['DEBUG'], self.debug_name, "Requesting compact status for firmware version checking...")
         self.broadcast_node.status('compact', device='all')  # This will get node AND muscle status
+
         # Note: The node_list property will automatically reflect any changes to active_nodes
 
     def start_serial(self):

@@ -23,6 +23,56 @@ AMP = "amps"
 VOLT = "volts"
 DEG =  "degree"
 
+# === Version Compatibility Configuration ===
+# These constants define firmware version compatibility ranges
+MIN_FIRMWARE_VERSION = "1.1.1"  # Minimum supported firmware version
+MAX_TESTED_FIRMWARE_VERSION = "1.1.2"  # Maximum tested firmware version
+FIRMWARE_UPDATE_URL = "https://github.com/Delta-Robotics-Inc/TF-Node-Updater"
+PYTHON_UPDATE_URL = "pip install -U thermoflex"
+
+def parse_version(version_str):
+    """
+    Parse a version string into a tuple of integers for comparison.
+    
+    Args:
+        version_str (str): Version string like "1.2.13" or "1.2"
+        
+    Returns:
+        tuple: Tuple of integers (major, minor, patch) where patch defaults to 0
+    """
+    if not version_str:
+        return (0, 0, 0)
+    
+    try:
+        parts = version_str.split('.')
+        major = int(parts[0]) if len(parts) > 0 else 0
+        minor = int(parts[1]) if len(parts) > 1 else 0
+        patch = int(parts[2]) if len(parts) > 2 else 0
+        return (major, minor, patch)
+    except (ValueError, IndexError):
+        D.debug(DEBUG_LEVELS['WARNING'], "VersionCheck", f"Invalid version format: {version_str}")
+        return (0, 0, 0)
+
+def compare_versions(version1, version2):
+    """
+    Compare two version strings.
+    
+    Args:
+        version1 (str): First version string
+        version2 (str): Second version string
+        
+    Returns:
+        int: -1 if version1 < version2, 0 if equal, 1 if version1 > version2
+    """
+    v1_tuple = parse_version(version1)
+    v2_tuple = parse_version(version2)
+    
+    if v1_tuple < v2_tuple:
+        return -1
+    elif v1_tuple > v2_tuple:
+        return 1
+    else:
+        return 0
 
 def enforce_size_limit(data:list,size = 100):
     if len(data) > size:
@@ -107,6 +157,9 @@ class Node:
         # Message tracking
         self.msgsent = False  # Flag to track if a message was sent to this node
         self.msgrec = True    # Flag to track if a message was received from this node
+        
+        # Version checking
+        self._version_check_completed = False  # Flag to track if version check has been performed
         if pulse == True:
             # Initialize heartbeat system for this node
             self.heartbeat = True  # Enable heartbeat monitoring for this node
@@ -162,6 +215,57 @@ class Node:
             m.cleanup()
         self.muscles.clear()
         D.debug(DEBUG_LEVELS['INFO'], "Node", f"Node {self.id} cleaned up")
+
+    def _check_firmware_version(self):
+        """
+        Check firmware version compatibility and warn user if needed.
+        This method is called automatically when firmware version is first retrieved.
+        """
+        if self._version_check_completed or not self.firmware:
+            return
+            
+        self._version_check_completed = True
+        node_id = self.get_node_id_string()
+        
+        # ANSI color codes
+        YELLOW = '\033[93m'
+        GREEN = '\033[92m'
+        RESET = '\033[0m'
+        
+        # Compare with minimum required version
+        if compare_versions(self.firmware, MIN_FIRMWARE_VERSION) < 0:
+            # Firmware is too old
+            D.debug(DEBUG_LEVELS['WARNING'], "VersionCheck", f"Node {node_id} firmware v{self.firmware} is OUTDATED")
+            print(f"\n{YELLOW}⚠️  WARNING: Node {node_id} Firmware Update Required{RESET}")
+            print(f"{YELLOW}   Current firmware: v{self.firmware}{RESET}")
+            print(f"{YELLOW}   Minimum required: v{MIN_FIRMWARE_VERSION}{RESET}")
+            print(f"{YELLOW}   {RESET}")
+            print(f"{YELLOW}   Your controller firmware is out of date and may not work{RESET}")
+            print(f"{YELLOW}   correctly with this Python library version.{RESET}")
+            print(f"{YELLOW}   {RESET}")
+            print(f"{YELLOW}   Please update your firmware using the updater tool:{RESET}")
+            print(f"{YELLOW}   {FIRMWARE_UPDATE_URL}{RESET}")
+            print(f"{YELLOW}   {RESET}")
+            
+        elif compare_versions(self.firmware, MAX_TESTED_FIRMWARE_VERSION) > 0:
+            # Firmware might be too new
+            D.debug(DEBUG_LEVELS['WARNING'], "VersionCheck", f"Node {node_id} firmware v{self.firmware} is NEWER than tested")
+            print(f"\n{YELLOW}⚠️  WARNING: Node {node_id} Firmware May Be Too New{RESET}")
+            print(f"{YELLOW}   Current firmware: v{self.firmware}{RESET}")
+            print(f"{YELLOW}   Max tested version: v{MAX_TESTED_FIRMWARE_VERSION}{RESET}")
+            print(f"{YELLOW}   {RESET}")
+            print(f"{YELLOW}   Your controller firmware is newer than what this Python{RESET}")
+            print(f"{YELLOW}   library has been tested with. Some features may not work{RESET}")
+            print(f"{YELLOW}   correctly.{RESET}")
+            print(f"{YELLOW}   {RESET}")
+            print(f"{YELLOW}   Consider updating the Python library:{RESET}")
+            print(f"{YELLOW}   {PYTHON_UPDATE_URL}{RESET}")
+            print(f"{YELLOW}   {RESET}")
+            
+        else:
+            # Version is compatible
+            D.debug(DEBUG_LEVELS['INFO'], "VersionCheck", f"Node {node_id} firmware v{self.firmware} is compatible")
+            print(f"{GREEN}✅ Node {node_id}: Firmware v{self.firmware} is compatible{RESET}")
 
     def testMuscles(self, sendformat:int = 1):
         '''
@@ -304,12 +408,16 @@ class Node:
                     # New X.X.X format (patch defaults to 0 if not present)
                     patch = resp_data.get('firmware_version_patch', 0)
                     self.firmware = f"{major}.{minor}.{patch}"
+                    # Check version compatibility when firmware is first retrieved
+                    self._check_firmware_version()
                 else:
                     # Legacy X.X format (backward compatibility)
                     major = resp_data.get('firmware_version')
                     minor = resp_data.get('firmware_subversion')
                     if major is not None and minor is not None:
                         self.firmware = f"{major}.{minor}"
+                        # Check version compatibility when firmware is first retrieved
+                        self._check_firmware_version()
                 if 'board_version' in resp_data and 'board_subversion' in resp_data:
                     self.board_version = f"{resp_data['board_version']}.{resp_data['board_subversion']}"
                 if 'muscle_cnt' in resp_data:
